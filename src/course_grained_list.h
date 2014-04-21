@@ -1,28 +1,20 @@
-#ifndef COURSE_LIST
-#define COURSE_LIST
+#ifndef COARSE_LIST
+#define COARSE_LIST
 
 #include <iostream>
 #include <pthread.h>
 
 #include "list.h"
 
-class CourseGrainedList : public List
-{
 
+template <typename T>
+class CoarseGrainedList : public List<T>
+{
 private:
 	pthread_mutex_t* _lock;
-
-public:
-	CourseGrainedList();
-	~CourseGrainedList();
-	virtual bool insert(elem_t);
-	virtual bool remove(elem_t);
-	virtual bool contains(elem_t);
-	virtual int length();
-
 };
 
-class CourseGrainedNode : public Node
+class CoarseGrainedNode : public Node
 {
 
 };
