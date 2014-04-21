@@ -7,26 +7,31 @@ using namespace std;
 CourseGrainedList::CourseGrainedList() : List()
 {
 	_head = NULL;
+    length = 0;
     _lock = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
 	pthread_mutex_init(_lock, NULL);
 }
 
 CourseGrainedList::~CourseGrainedList()
 {
+    pthread_mutex_lock(_lock);
 
 	Node* node = _head;
-	while (node != NULL) {
+	while (node != NULL)
+    {
 		Node* tmp = node;
 		node = node->next;
 		delete tmp;
 	}
+
+    pthread_mutex_unlock(_lock);
 	pthread_mutex_destroy(_lock);
     free(_lock);
 }
 
-bool CourseGrainedList::insert(elem_t val)
+bool CourseGrainedList::insert(T val)
 {
-	Node* node = (Node*) malloc(sizeof(Node));
+	Node* node = new Node;
 	if (node == NULL) {
 		return false;
 	}
@@ -40,6 +45,7 @@ bool CourseGrainedList::insert(elem_t val)
 	} else if (val < _head->val) {
 		node->next = _head;
 		_head = node;
+
 	} else {
 		Node* cur = _head->next;
 		Node* prev = _head;
@@ -56,11 +62,12 @@ bool CourseGrainedList::insert(elem_t val)
 		node->next = cur;
 	}
 
+    length++;
 	pthread_mutex_unlock(_lock);
 	return true;
 }
 
-bool CourseGrainedList::remove(elem_t val)
+bool CourseGrainedList::remove(T val)
 {
     pthread_mutex_lock(_lock);
 
@@ -71,8 +78,9 @@ bool CourseGrainedList::remove(elem_t val)
 
     if (_head->val == val) {
         Node* tmp = _head->next;
-        free(_head);
+        delete _head;
         _head = tmp;
+        length--;
         pthread_mutex_unlock(_lock);
         return true;
     }
@@ -82,7 +90,8 @@ bool CourseGrainedList::remove(elem_t val)
     while (cur != NULL) {
         if (val == cur->val) {
             prev->next = cur->next;
-            free(cur);
+            delete cur;
+            length--;
             pthread_mutex_unlock(_lock);
             return true;
         }
@@ -95,7 +104,7 @@ bool CourseGrainedList::remove(elem_t val)
     return false;
 }
 
-bool CourseGrainedList::contains(elem_t val)
+bool CourseGrainedList::contains(T val)
 {
     pthread_mutex_lock(_lock);
 
@@ -129,7 +138,7 @@ int CourseGrainedList::length()
     return length;
 }
 
-elem_t CourseGrainedList::operator[](int index)
+T CourseGrainedList::operator[](int index)
 {
     pthread_mutex_lock(_lock);
     int i = 0;
@@ -145,5 +154,4 @@ elem_t CourseGrainedList::operator[](int index)
     }
 
     throw out_of_range("No such element in list.");
-
 }

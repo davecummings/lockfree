@@ -4,23 +4,18 @@
 #include <iostream>
 #include <cstdlib>
 
-typedef int elem_t;
 
-class Node
-{
-public:
-	elem_t val;
-	Node* next;
-};
-
+template <typename T>
 class List
 {
 public:
-	virtual bool insert(elem_t) = 0;
-	virtual bool remove(elem_t) = 0;
-	virtual bool contains(elem_t) = 0;
+	virtual bool insert(T) = 0;
+	virtual bool remove(T) = 0;
+	virtual bool contains(T) = 0;
 	virtual int length() = 0;
-	virtual elem_t operator[](int index) = 0;
+	virtual T operator[](int index) = 0;
+
+protected:
 	Node* _head;
 };
 
