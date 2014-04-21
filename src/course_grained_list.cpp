@@ -1,3 +1,5 @@
+#include <stdexcept>
+
 #include "course_grained_list.h"
 
 using namespace std;
@@ -113,14 +115,35 @@ bool CourseGrainedList::contains(elem_t val)
 
 int CourseGrainedList::length()
 {
+    pthread_mutex_lock(_lock);
 	int length = 0;
 	Node* node = _head;
-    pthread_mutex_lock(_lock);
 
     while (node != NULL) {
     	length++;
     	node = node->next;
     }
 
+    pthread_mutex_unlock(_lock);
+
     return length;
+}
+
+elem_t CourseGrainedList::operator[](int index)
+{
+    pthread_mutex_lock(_lock);
+    int i = 0;
+    Node* node = _head;
+
+    while (node != NULL) {
+        if (index == i) {
+            pthread_mutex_unlock(_lock);
+            return node->val;
+        }
+        i++;
+        node = node->next;
+    }
+
+    throw out_of_range("No such element in list.");
+
 }

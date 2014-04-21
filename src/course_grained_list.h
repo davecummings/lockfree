@@ -19,7 +19,7 @@ public:
 	virtual bool remove(elem_t);
 	virtual bool contains(elem_t);
 	virtual int length();
-
+	elem_t operator[](int index);
 };
 
 class CourseGrainedNode : public Node

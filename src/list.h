@@ -20,6 +20,7 @@ public:
 	virtual bool remove(elem_t) = 0;
 	virtual bool contains(elem_t) = 0;
 	virtual int length() = 0;
+	virtual elem_t operator[](int index) = 0;
 	Node* _head;
 };
 
