@@ -5,6 +5,12 @@
 #include <cstdlib>
 
 
+class Node
+{
+    int elemt;
+    Node* n;
+};
+
 template <typename T>
 class List
 {
