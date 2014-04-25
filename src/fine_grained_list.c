@@ -64,8 +64,8 @@ bool insert(List* l, elem_t val)
             Node* tmp = prev;
             prev = cur;
             cur = cur->next;
-            if (cur != NULL) pthread_mutex_lock(&cur->lock);
             pthread_mutex_unlock(&tmp->lock);
+            if (cur != NULL) pthread_mutex_lock(&cur->lock);
         }
 
         prev->next = n;
@@ -119,8 +119,8 @@ bool delete(List* l, elem_t val)
         Node* tmp = prev;
         prev = cur;
         cur = cur->next;
-        if (cur != NULL) pthread_mutex_lock(&cur->lock);
         pthread_mutex_unlock(&tmp->lock);
+        if (cur != NULL) pthread_mutex_lock(&cur->lock);
     }
 
     pthread_mutex_unlock(&prev->lock);
