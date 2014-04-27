@@ -33,9 +33,7 @@ template<typename T>
 bool CoarseGrainedList<T>::insert(T val)
 {
 	CoarseGrainedNode<T>* node = new CoarseGrainedNode<T>();
-	if (node == NULL) {
-		return false;
-	}
+
 	node->val = val;
 
 	pthread_mutex_lock(_lock);
@@ -153,7 +151,10 @@ T CoarseGrainedList<T>::operator[](int index)
         node = node->next;
     }
 
-    throw std::out_of_range("No such element in list.");
+    pthread_mutex_unlock(_lock);
+    throw std::out_of_range("Index exceeds list length.");
 }
 
 template class CoarseGrainedList<int>;
+template class CoarseGrainedList<double>;
+template class CoarseGrainedList<long>;

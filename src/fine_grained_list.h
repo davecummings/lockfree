@@ -1,22 +1,36 @@
-#ifndef COARSE_LIST
-#define COARSE_LIST
+#ifndef FINE_GRAINED_LIST
+#define FINE_GRAINED_LIST
 
-#include <iostream>
 #include <pthread.h>
 
 #include "list.h"
 
+template<typename T>
+class FineGrainedNode : public Node<T>
+{
+public:
+	FineGrainedNode();
+	FineGrainedNode* next;
+	pthread_mutex_t* lock;
+	~FineGrainedNode();
+};
 
-template <typename T>
+template<typename T>
 class FineGrainedList : public List<T>
 {
 private:
-    pthread_mutex_t* _lock;
-};
+	FineGrainedNode<T>* _head;
+	pthread_mutex_t* _lock;
 
-class CoarseGrainedNode : public Node
-{
-
+public:
+	FineGrainedList();
+	virtual bool insert(T val);
+	virtual bool remove(T val);
+	virtual bool contains(T val);
+	virtual int length();
+	virtual bool isEmpty();
+	T operator[](int index);
+	~FineGrainedList();
 };
 
 #endif

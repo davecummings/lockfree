@@ -12,12 +12,6 @@ public:
 	Node* next;
 };
 
-class Node
-{
-    int elemt;
-    Node* n;
-};
-
 template <typename T>
 class List
 {
