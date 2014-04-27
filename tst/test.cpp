@@ -6,33 +6,35 @@
 #include <sys/time.h>
 
 #include "../src/list.h"
-#include "../src/course_grained_list.h"
+#include "../src/coarse_grained_list.h"
 
 using namespace std;
 
-void test_sanity(List& list);
-void test_length(List& list, int threads, int num_nums);
-void test_pressure(List& list, int threads, int num_nums);
+typedef int elem_t;
+
+void test_sanity(List<elem_t>& list);
+void test_length(List<elem_t>& list, int threads, int num_nums);
+void test_pressure(List<elem_t>& list, int threads, int num_nums);
 
 int main()
 {
     cout << "Running test suite (maximimum threads: " << omp_get_max_threads() << ")" << endl;
 
-    CourseGrainedList* cList = new CourseGrainedList();
+    CoarseGrainedList<elem_t>* cList = new CoarseGrainedList<elem_t>();
     test_sanity(*cList);
 
     for (int j = 100; j < 1000000; j *= 10) {
         for (int i = 0; i < 4; i++) {
             test_length(*cList, 1<<i, j);
             delete cList;
-            cList = new CourseGrainedList;
+            cList = new CoarseGrainedList<elem_t>();
         }
     }
 
     return 0;
 }
 
-void test_sanity(List& list)
+void test_sanity(List<elem_t>& list)
 {
     omp_set_num_threads(1);
     const int iters = 100;
@@ -55,14 +57,14 @@ void test_sanity(List& list)
         list.remove(i);
     }
 
-    if (list._head == NULL) {
+    if (list.isEmpty()) {
         cout << "Sanity test passed!" << endl;
     } else {
         cout << "Sanity test failed! You suck!" << endl;
     }
 }
 
-void test_length(List& list, int threads, int num_nums)
+void test_length(List<elem_t>& list, int threads, int num_nums)
 {
     omp_set_num_threads(threads);
 
@@ -92,7 +94,7 @@ void test_length(List& list, int threads, int num_nums)
     }
 }
 
-void test_pressure(List& list, int threads, int num_nums)
+void test_pressure(List<elem_t>& list, int threads, int num_nums)
 {
     const int max_len = 50;
 
