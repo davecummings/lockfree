@@ -4,6 +4,21 @@
 #include <stdbool.h>
 
 
+typedef int elem_t;
+
+typedef struct Node
+{
+    elem_t val;
+    struct Node* next;
+    pthread_mutex_t lock;
+} Node;
+
+typedef struct List
+{
+    Node* head;
+    pthread_mutex_t lock; // a lock for the head of the list
+} List;
+
 
 List* new_list()
 {
@@ -27,7 +42,7 @@ bool insert(List* l, elem_t val)
         l->head = n;
         pthread_mutex_unlock(&l->lock);
     }
-    else if (val < l->head->val)
+    else if (val <= l->head->val)
     {
         n->next = l->head;
         l->head = n;
@@ -35,15 +50,15 @@ bool insert(List* l, elem_t val)
     }
     else
     {
-        Node* cur = l->head->next;
         Node* prev = l->head;
+        Node* cur = prev->next;
         pthread_mutex_lock(&prev->lock);
         if (cur != NULL) pthread_mutex_lock(&cur->lock);
         pthread_mutex_unlock(&l->lock);
 
         while (cur != NULL)
         {
-            if (val < cur->val)
+            if (val <= cur->val)
                 break;
 
             Node* tmp = prev;
@@ -57,7 +72,7 @@ bool insert(List* l, elem_t val)
         n->next = cur;
 
         pthread_mutex_unlock(&prev->lock);
-        pthread_mutex_unlock(&cur->lock);
+        if (cur != NULL) pthread_mutex_unlock(&cur->lock);
     }
 
     return true;
@@ -96,6 +111,7 @@ bool delete(List* l, elem_t val)
             prev->next = cur->next;
             pthread_mutex_unlock(&prev->lock);
             pthread_mutex_unlock(&cur->lock);
+            pthread_mutex_destroy(&cur->lock);
             free(cur);
             return true;
         }
@@ -104,7 +120,6 @@ bool delete(List* l, elem_t val)
         prev = cur;
         cur = cur->next;
         pthread_mutex_unlock(&tmp->lock);
-        // might have to move up
         if (cur != NULL) pthread_mutex_lock(&cur->lock);
     }
 
@@ -117,28 +132,39 @@ bool find(List* l, elem_t val)
     pthread_mutex_lock(&l->lock);
 
     Node* cur = l->head;
+    if (cur != NULL) pthread_mutex_lock(&cur->lock);
+    pthread_mutex_unlock(&l->lock);
+
     while (cur != NULL)
     {
         if (val == cur->val)
         {
-            pthread_mutex_unlock(&l->lock);
+            pthread_mutex_unlock(&cur->lock);
             return true;
         }
 
+        Node* tmp = cur;
         cur = cur->next;
+        pthread_mutex_unlock(cur);
     }
 
-    pthread_mutex_unlock(&l->lock);
     return false;
 }
 
 void delete_list(List* l)
 {
+    pthread_mutex_lock(&l->lock);
     Node* cur = l->head;
+    l->head = NULL; // break the list
+    if (cur != NULL) pthread_mutex_lock(&cur->lock);
+    pthread_mutex_unlock(&l->lock);
+
     while (cur != NULL)
     {
         Node* tmp = cur;
         cur = cur->next;
+        pthread_mutex_lock(&cur->lock);
+        pthread_mutex_unlock(&tmp->lock);
         free(tmp);
     }
 
