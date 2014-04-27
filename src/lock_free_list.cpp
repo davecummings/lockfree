@@ -84,6 +84,7 @@ void LockFreeList<T>::search(T val, Node<T>** leftNodeRef, Node<T>** rightNodeRe
 			if (*rightNodeRef != _tail && isMarkedReference((*rightNodeRef)->next)) {
 				continue;
 			} else {
+				// free leftNode through rightNode, inclusive
 				return;
 			}
 		}
@@ -100,6 +101,7 @@ bool LockFreeList<T>::insert(T val)
 
 	while (true) {
 		search(val, &leftNode, &rightNode);
+		// already in the list
 		if (rightNode != _tail && rightNode->val == val) {
 			return false;
 		}
@@ -117,8 +119,6 @@ bool LockFreeList<T>::remove(T val)
 	Node<T>* rightNode;
 	Node<T>* rightNodeNext;
 
-	printList();
-
 	while (true) {
 		search(val, &leftNode, &rightNode);
 
@@ -135,15 +135,17 @@ bool LockFreeList<T>::remove(T val)
 				break;
 			}
 		}
-
-		/* Try to physically delete the node here.
-			Otherwise, call search to delete it. */
-		if (!__sync_bool_compare_and_swap(&leftNode->next, rightNode, rightNodeNext)) {
-			search(rightNode->val, &leftNode, &rightNode);
-		}
-
-		return true;
 	}
+
+	/* Try to physically delete the node here.
+		Otherwise, call search to delete it. */
+	if (!__sync_bool_compare_and_swap(&leftNode->next, rightNode, rightNodeNext)) {
+		search(rightNode->val, &leftNode, &rightNode);
+	} else {
+		// free rightNode
+	}
+
+	return true;
 }
 
 template<typename T>
@@ -169,51 +171,62 @@ bool LockFreeList<T>::isEmpty()
 template<typename T>
 int LockFreeList<T>::length()
 {
-	Node<T>* leftNode;
-	Node<T>** leftNodeRef = &leftNode;
-	Node<T>* rightNode;
-	Node<T>** rightNodeRef = &rightNode;
-	Node<T>* leftNodeNext;
+	// Node<T;>* leftNode;
+	// Node<T>** leftNodeRef = &leftNode;
+	// Node<T>* rightNode;
+	// Node<T>** rightNodeRef = &rightNode;
+	// Node<T>* leftNodeNext;
 
+	// int length = 0;
+
+	// while (true) {
+	// 	Node<T>* prev = _head;
+	// 	Node<T>* cur = prev->next;
+
+	// 	/* 1: Find leftNode and rightNode */
+	// 	while (true) {
+	// 		if (!isMarkedReference(cur)) {
+	// 			*leftNodeRef = prev;
+	// 			leftNodeNext = cur;
+	// 		}
+	// 		prev = getUnmarkedReference(cur);
+	// 		if (prev == _tail) {
+	// 			break;
+	// 		}
+	// 		cur = prev->next;
+	// 		length++;
+	// 	}
+	// 	*rightNodeRef = prev;
+
+	// 	 2: Check if nodes are adjacent 
+	// 	if (leftNodeNext == *rightNodeRef) {
+	// 		if (*rightNodeRef != _tail && isMarkedReference((*rightNodeRef)->next)) {
+	// 			continue;
+	// 		} else {
+	// 			break;
+	// 		}
+	// 	}
+
+	// 	/* 3: Remove one or more marked nodes */
+	// 	if (__sync_bool_compare_and_swap(&((*leftNodeRef)->next), leftNodeNext, *rightNodeRef)) {
+	// 		// right node got marked while performing operation
+	// 		if (*rightNodeRef != _tail && isMarkedReference((*rightNodeRef)->next)) {
+	// 			continue;
+	// 		} else {
+	// 			break;
+	// 		}
+	// 	}
+	// }
+
+	// return length;
+
+	Node<T>* node = getUnmarkedReference(_head->next);
 	int length = 0;
 
-	while (true) {
-		Node<T>* prev = _head;
-		Node<T>* cur = prev->next;
-
-		/* 1: Find leftNode and rightNode */
-		while (true) {
-			if (!isMarkedReference(cur)) {
-				*leftNodeRef = prev;
-				leftNodeNext = cur;
-			}
-			prev = getUnmarkedReference(cur);
-			if (prev == _tail) {
-				break;
-			}
-			cur = prev->next;
-			length++;
-		}
-		*rightNodeRef = prev;
-
-		/* 2: Check if nodes are adjacent */
-		if (leftNodeNext == *rightNodeRef) {
-			if (*rightNodeRef != _tail && isMarkedReference((*rightNodeRef)->next)) {
-				continue;
-			} else {
-				break;
-			}
-		}
-
-		/* 3: Remove one or more marked nodes */
-		if (__sync_bool_compare_and_swap(&((*leftNodeRef)->next), leftNodeNext, *rightNodeRef)) {
-			// right node got marked while performing operation
-			if (*rightNodeRef != _tail && isMarkedReference((*rightNodeRef)->next)) {
-				continue;
-			} else {
-				break;
-			}
-		}
+	while (node != _tail && node != NULL) {
+		length++;
+		node = node->next;
+		node = getUnmarkedReference(node);
 	}
 
 	return length;
@@ -244,7 +257,7 @@ T LockFreeList<T>::operator[](int index)
 	Node<T>* node = getUnmarkedReference(_head->next);
 	int i = 0;
 
-	while (node != _tail) {
+	while (node != _tail && node != NULL) {
 		if (index == i) {
 			return node->val;
 		}

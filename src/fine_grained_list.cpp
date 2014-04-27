@@ -78,13 +78,12 @@ bool FineGrainedList<T>::insert(T val)
 			if (val <= cur->val) {
 				break;
 			}
-
+			if (cur->next != NULL) {
+				pthread_mutex_lock(cur->next->lock);
+			}
 			FineGrainedNode<T>* tmp = prev;
 			prev = cur;
 			cur = cur->next;
-			if (cur != NULL) {
-				pthread_mutex_lock(cur->lock);
-			}
 			pthread_mutex_unlock(tmp->lock);
 		}
 
@@ -186,17 +185,13 @@ int FineGrainedList<T>::length()
 {
 	pthread_mutex_lock(_lock);
 
-	std::cout << "[";
-
 	FineGrainedNode<T>* node = _head;
 	int length = 0;
 
 	while (node != NULL) {
-		std::cout << node->val << ",";
 		node = node->next;
 		length++;
 	}
-	std::cout << "]" << std::endl;
 	pthread_mutex_unlock(_lock);
 	return length;
 }
