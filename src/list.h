@@ -7,18 +7,17 @@
 
 class Node
 {
-    int elemt;
+    int elem;
     Node* n;
 };
 
-template <typename T>
 class List
 {
 public:
-	virtual bool insert(T) = 0;
-	virtual bool remove(T) = 0;
-	virtual bool contains(T) = 0;
-	virtual int length() = 0;
+	virtual bool insert(int);
+	virtual bool delete(int);
+	virtual bool find(int);
+	virtual int size();
 	virtual T operator[](int index) = 0;
 
 protected:
