@@ -4,7 +4,7 @@
 #include <iostream>
 #include <cstdlib>
 
-template <typename T>
+
 class Node
 {
 public:
@@ -12,7 +12,6 @@ public:
 	Node<T>* next;
 };
 
-template <typename T>
 class List
 {
 public:
@@ -24,6 +23,9 @@ public:
 	virtual void clear() = 0;
 	virtual std::string name() = 0;
 	virtual T operator[](int index) = 0;
+
+protected:
+	Node<T>* _head;
 };
 
 #endif
