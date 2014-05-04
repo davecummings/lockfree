@@ -8,13 +8,15 @@ FineGrainedNode<T>::FineGrainedNode() : Node<T>()
 {
 	lock = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
 	pthread_mutex_init(lock, NULL);
+	next = NULL;
 }
 
 template<typename T>
 FineGrainedNode<T>::~FineGrainedNode()
 {
+	next = NULL;
 	pthread_mutex_destroy(lock);
-	// free(lock);
+	free(lock);
 }
 
 template<typename T>
@@ -29,21 +31,21 @@ template<typename T>
 FineGrainedList<T>::~FineGrainedList()
 {
 	pthread_mutex_lock(_lock);
-	FineGrainedNode<T>* cur = _head;
+	FineGrainedNode<T>* curr = _head;
 	_head = NULL; // break the list
-	if (cur != NULL) {
-		pthread_mutex_lock(cur->lock);
+	if (curr != NULL) {
+		pthread_mutex_lock(curr->lock);
 	}
 	pthread_mutex_unlock(_lock);
 
-	while (cur != NULL) {
-		FineGrainedNode<T>* tmp = cur;
-		cur = cur->next;
-		if (cur != NULL) {
-			pthread_mutex_lock(cur->lock);
+	while (curr != NULL) {
+		FineGrainedNode<T>* old = curr;
+		curr = curr->next;
+		if (curr != NULL) {
+			pthread_mutex_lock(curr->lock);
 		}
-		pthread_mutex_unlock(tmp->lock);
-		delete tmp;
+		pthread_mutex_unlock(old->lock);
+		delete old;
 	}
 
 	pthread_mutex_destroy(_lock);
@@ -53,50 +55,63 @@ FineGrainedList<T>::~FineGrainedList()
 template<typename T>
 bool FineGrainedList<T>::insert(T val)
 {
-	FineGrainedNode<T>* n = new FineGrainedNode<T>();
-	n->val = val;
 	pthread_mutex_lock(_lock);
 
-	if (_head == NULL) {
-		n->next = NULL;
-		_head = n;
+	if (_head == NULL || val < _head->val) {
+		FineGrainedNode<T>* node = new FineGrainedNode<T>();
+		node->val = val;
+		node->next = _head;
+		_head = node;
 		pthread_mutex_unlock(_lock);
-	} else if (val <= _head->val) {
-		n->next = _head;
-		_head = n;
-		pthread_mutex_unlock(_lock);
+		return true;
+	}
+
+	pthread_mutex_lock(_head->lock);
+	FineGrainedNode<T>* curr = _head; // locked
+	pthread_mutex_unlock(_lock);
+	FineGrainedNode<T>* next = curr->next;
+
+	if (next == NULL) {
+		FineGrainedNode<T>* node = new FineGrainedNode<T>();
+		node->val = val;
+		node->next = NULL;
+		curr->next = node;
+		pthread_mutex_unlock(curr->lock);
+		return true;
 	} else {
-		FineGrainedNode<T>* prev = _head;
-		pthread_mutex_lock(prev->lock);
-		FineGrainedNode<T>* cur = prev->next;
-		if (cur != NULL) {
-			pthread_mutex_lock(cur->lock);
-		}
-		pthread_mutex_unlock(_lock);
+		pthread_mutex_lock(next->lock);
+	}
 
-		while (cur != NULL) {
-			if (val <= cur->val) {
-				break;
-			}
-			if (cur->next != NULL) {
-				pthread_mutex_lock(cur->next->lock);
-			}
-			FineGrainedNode<T>* tmp = prev;
-			prev = cur;
-			cur = cur->next;
-			pthread_mutex_unlock(tmp->lock);
-		}
+	while (val > next->val) {
+		pthread_mutex_unlock(curr->lock);
+		curr = next;
+		next = next->next;
 
-		prev->next = n;
-		n->next = cur;
-
-		pthread_mutex_unlock(prev->lock);
-		if (cur != NULL) {
-			pthread_mutex_unlock(cur->lock);
+		if (next == NULL) {
+			FineGrainedNode<T>* node = new FineGrainedNode<T>();
+			node->val = val;
+			node->next = NULL;
+			curr->next = node;
+			pthread_mutex_unlock(curr->lock);
+			return true;
+		} else {
+			pthread_mutex_lock(next->lock);
 		}
 	}
 
-	return true;
+	if (val == next->val) {
+		pthread_mutex_unlock(curr->lock);
+		pthread_mutex_unlock(next->lock);
+		return false;
+	} else { // val < next->val
+		FineGrainedNode<T>* node = new FineGrainedNode<T>();
+		node->val = val;
+		node->next = next;
+		curr->next = node;
+		pthread_mutex_unlock(curr->lock);
+		pthread_mutex_unlock(next->lock);
+		return true;
+	}
 }
 
 template<typename T>
@@ -109,44 +124,50 @@ bool FineGrainedList<T>::remove(T val)
 		return false;
 	}
 
-	if (_head->val == val) {
-		FineGrainedNode<T>* tmp = _head->next;
-		delete _head;
-		_head = tmp;
+	pthread_mutex_lock(_head->lock);
+
+	if (val == _head->val) {
+		FineGrainedNode<T>* old = _head;
+		_head = old->next;
 		pthread_mutex_unlock(_lock);
+		pthread_mutex_unlock(old->lock);
+		delete old;
 		return true;
 	}
 
-	FineGrainedNode<T>* prev = _head;
-	FineGrainedNode<T>* cur = prev->next;
-
-	pthread_mutex_lock(prev->lock);
-	if (cur != NULL) {
-		pthread_mutex_lock(cur->lock);
-	}
-
+	FineGrainedNode<T>* prev = _head; // locked
 	pthread_mutex_unlock(_lock);
-
-	while (cur != NULL) {
-		if (val == cur->val) {
-			prev->next = cur->next;
-			pthread_mutex_unlock(prev->lock);
-			pthread_mutex_unlock(cur->lock);
-			delete cur;
-			return true;
-		}
-
-		FineGrainedNode<T>* tmp = prev;
-		prev = cur;
-		cur = cur->next;
-		if (cur != NULL) {
-			pthread_mutex_lock(cur->lock);
-		}
-		pthread_mutex_unlock(tmp->lock);
+	FineGrainedNode<T>* curr = prev->next;
+	if (curr != NULL) {
+		pthread_mutex_lock(curr->lock);
 	}
 
-	pthread_mutex_unlock(prev->lock);
-	return false;
+	while (val > curr->val) {
+		pthread_mutex_unlock(prev->lock);
+		prev = curr;
+		curr = prev->next;
+		if (curr != NULL) {
+			pthread_mutex_lock(curr->lock);
+		} else {
+			pthread_mutex_unlock(prev->lock);
+			return false;
+		}
+	}
+
+	if (val == curr->val) {
+		prev->next = curr->next;
+		pthread_mutex_unlock(prev->lock);
+		pthread_mutex_unlock(curr->lock);
+		delete curr;
+		return true;
+	} else { // val < curr->val
+		pthread_mutex_unlock(prev->lock);
+		if (curr != NULL) {
+			pthread_mutex_unlock(curr->lock);
+		}
+		return false;
+	}
+
 }
 
 template<typename T>
@@ -154,24 +175,39 @@ bool FineGrainedList<T>::contains(T val)
 {
 	pthread_mutex_lock(_lock);
 
-	FineGrainedNode<T>* cur = _head;
-	if (cur != NULL) {
-		pthread_mutex_lock(cur->lock);
+	if (_head == NULL) {
+		pthread_mutex_unlock(_lock);
+		return false;
+	} else if (val == _head->val) {
+		pthread_mutex_unlock(_lock);
+		return true;
 	}
+
+	pthread_mutex_lock(_head->lock);
+	FineGrainedNode<T>* curr = _head; // locked
 	pthread_mutex_unlock(_lock);
+	FineGrainedNode<T>* next = curr->next;
 
-	while (cur != NULL) {
-		if (val == cur->val) {
-			pthread_mutex_unlock(cur->lock);
-			return true;
+	while (val > curr->val) {
+		if (next == NULL) {
+			pthread_mutex_unlock(curr->lock);
+			return false;
+		} else {
+			pthread_mutex_lock(next->lock);
+			pthread_mutex_unlock(curr->lock);
+			curr = next;
+			next = next->next;
 		}
-
-		FineGrainedNode<T>* tmp = cur;
-		cur = cur->next;
-		pthread_mutex_unlock(cur->lock);
 	}
 
-	return false;
+	if (val == curr->val) {
+		pthread_mutex_unlock(curr->lock);
+		return true;
+	} else {
+		pthread_mutex_unlock(curr->lock);
+		pthread_mutex_unlock(next->lock);
+		return false;
+	}
 }
 
 template<typename T>
@@ -181,17 +217,39 @@ bool FineGrainedList<T>::isEmpty()
 }
 
 template<typename T>
+void FineGrainedList<T>::clear()
+{
+	pthread_mutex_lock(_lock);
+	while (_head != NULL) {
+		pthread_mutex_lock(_head->lock);
+		FineGrainedNode<T>* old = _head;
+		_head = _head->next;
+		pthread_mutex_unlock(old->lock);
+		delete old;
+	}
+	pthread_mutex_unlock(_lock);
+}
+
+template<typename T>
+std::string FineGrainedList<T>::name()
+{
+	return "FineGrained";
+}
+
+template<typename T>
 int FineGrainedList<T>::length()
 {
 	pthread_mutex_lock(_lock);
-
-	FineGrainedNode<T>* node = _head;
 	int length = 0;
 
-	while (node != NULL) {
-		node = node->next;
+	while (_head != NULL) {
+		pthread_mutex_lock(_head->lock);
+		FineGrainedNode<T>* old = _head;
+		_head = _head->next;
+		pthread_mutex_unlock(old->lock);
 		length++;
 	}
+
 	pthread_mutex_unlock(_lock);
 	return length;
 }

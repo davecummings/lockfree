@@ -21,6 +21,8 @@ public:
 	virtual bool contains(T val);
 	virtual int length();
 	virtual bool isEmpty();
+	virtual void clear();
+	virtual std::string name();
 	virtual void printList();
 	T operator[](int index);
 	~LockFreeList();

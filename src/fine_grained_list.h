@@ -10,7 +10,7 @@ class FineGrainedNode : public Node<T>
 {
 public:
 	FineGrainedNode();
-	FineGrainedNode* next;
+	FineGrainedNode<T>* next;
 	pthread_mutex_t* lock;
 	~FineGrainedNode();
 };
@@ -29,6 +29,8 @@ public:
 	virtual bool contains(T val);
 	virtual int length();
 	virtual bool isEmpty();
+	virtual void clear();
+	virtual std::string name();
 	T operator[](int index);
 	~FineGrainedList();
 };

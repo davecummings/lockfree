@@ -49,7 +49,7 @@ bool LockFreeList<T>::isMarkedReference(Node<T>* n)
 template<typename T>
 void LockFreeList<T>::search(T val, Node<T>** leftNodeRef, Node<T>** rightNodeRef)
 {
-	Node<T>* leftNodeNext;
+	Node<T>* leftNodeNext = NULL;
 
 	while (true) {
 		Node<T>* prev = _head;
@@ -230,6 +230,30 @@ int LockFreeList<T>::length()
 	}
 
 	return length;
+}
+
+template<typename T>
+void LockFreeList<T>::clear()
+{
+	Node<T>* node = getUnmarkedReference(_head);
+	Node<T>* tail = getUnmarkedReference(_tail);
+	_head = new Node<T>();
+	_tail = new Node<T>();
+	_head->next = _tail;
+
+	while (node != tail) {
+		Node<T>* prev = node;
+		node = node->next;
+		delete prev;
+	}
+
+	delete tail;
+}
+
+template<typename T>
+std::string LockFreeList<T>::name()
+{
+	return "LockFree";
 }
 
 template<typename T>

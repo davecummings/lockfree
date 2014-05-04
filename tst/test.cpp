@@ -1,8 +1,13 @@
 #include <iostream>
+#include <sstream>
 #include <stdio.h>
 #include <cstdlib>
+#include <ios>
+#include <iomanip>
+#include <vector>
 #include <omp.h>
 #include <time.h>
+#include <cmath>
 #include <sys/time.h>
 
 #include "../src/list.h"
@@ -10,71 +15,94 @@
 #include "../src/fine_grained_list.h"
 #include "../src/lock_free_list.h"
 
+// #define DEBUG
+
+#ifdef DEBUG
+#define print_debug_result print_result
+#else
+#define print_debug_result(...)
+#endif
+
 using namespace std;
 
 typedef long elem_t;
 
-void test_sanity(List<elem_t>& list);
-void test_length(List<elem_t>& list, int threads, int num_nums);
-void test_pressure(List<elem_t>& list, int threads, int num_nums);
+bool test_sanity(List<elem_t>& list);
+
+int test_length(List<elem_t>& list, int threads, elem_t* vals, int num_vals, int expected_length, int max_length);
+
+int test_pressure(List<elem_t>& list, int threads, elem_t* vals, int num_vals, int expected_length, int max_length);
+
+void run_test_loop(vector<List<elem_t>*>& lists,
+    int (*test)(List<elem_t>&, int, elem_t*, int, int, int),
+    int start_val, int end_val, int start_p_2, int end_p_2, int max_len);
+
+void print_result(string test, string list, int vals, int threads, bool passed, double duration, ostringstream* error);
+
+void print_header();
 
 int main()
 {
     cout << "Running test suite (maximimum threads: " << omp_get_max_threads() << ")" << endl;
 
-    cout << "***COARSE***" << endl;
+    vector<List<elem_t>*> lists;
+    lists.push_back(new CoarseGrainedList<elem_t>());
+    lists.push_back(new FineGrainedList<elem_t>());
+    lists.push_back(new LockFreeList<elem_t>());
 
-    CoarseGrainedList<elem_t>* cList = new CoarseGrainedList<elem_t>();
-    test_sanity(*cList);
-
-    for (int j = 10000; j < 1000000; j *= 10) {
-        for (int i = 0; i < 4; i++) {
-            test_length(*cList, 1<<i, j);
-            delete cList;
-            cList = new CoarseGrainedList<elem_t>();
-            test_pressure(*cList, 1<<i, j);
-            delete cList;
-            cList = new CoarseGrainedList<elem_t>();
-        }
+    bool isSane = true;
+    for (unsigned int i = 0; i < lists.size(); i++) {
+        isSane &= test_sanity(*lists[i]);
+    }
+    if (isSane) {
+        cout << "Sanity tests passed!" << endl << endl;
+    } else {
+        cout << "Sanity tests failed! #define DEBUG to run in debug mode." << endl << endl;
     }
 
-    cout << "***FINE***" << endl;
+    string passes[] = { "1st", "2nd", "3rd" };
 
-    FineGrainedList<elem_t>* fList = new FineGrainedList<elem_t>();
-    test_sanity(*fList);
+    for (int i = 0; i < 3; i++) {
+        cout << " *** " << passes[i] << " pass *** " << endl << endl;
+        print_header();
 
-    for (int j = 10000; j < 1000000; j *= 10) {
-        for (int i = 0; i < 4; i++) {
-            test_length(*fList, 1<<i, j);
-            delete fList;
-            fList = new FineGrainedList<elem_t>();
-            // test_pressure(*fList, 1<<i, j);
-            // delete fList;
-            // fList = new FineGrainedList<elem_t>();
-            cout << "Pressure test on " << j << " skipped to avoid deadlock" << endl;
-        }
-    }
+        run_test_loop(lists, test_length, 10000, 1000000, 0, 4, -1);
+        run_test_loop(lists, test_pressure, 1000000, 100000000, 0, 4, 128);
+        run_test_loop(lists, test_pressure, 1000000, 100000000, 0, 4, 16);
 
-    cout << "***LOCK-FREE***" << endl;
-
-    LockFreeList<elem_t>* lfList = new LockFreeList<elem_t>();
-    test_sanity(*lfList);
-
-    for (int j = 10000; j < 1000000; j *= 10) {
-        for (int i = 0; i < 4; i++) {
-            test_length(*lfList, 1<<i, j);
-            delete lfList;
-            lfList = new LockFreeList<elem_t>();
-            test_pressure(*lfList, 1<<i, j);
-            delete lfList;
-            lfList = new LockFreeList<elem_t>();
-        }
+        cout << endl << endl;
     }
 
     return 0;
 }
 
-void test_sanity(List<elem_t>& list)
+void run_test_loop(vector<List<elem_t>*>& lists,
+    int (*test)(List<elem_t>&, int, elem_t*, int, int, int),
+    int start_val, int end_val, int start_p_2, int end_p_2, int max_len)
+{
+    for (int i = start_val; i < end_val; i *= 10) {
+        elem_t* vals = (elem_t*)malloc(i * sizeof(elem_t));
+        for (int j = 0; j < i; j++) {
+            vals[j] = rand();
+        }
+
+        for (int p_2 = start_p_2; p_2 < end_p_2; p_2++) {
+            int threads = 1<<p_2;
+            int expected = -1;
+
+            for (unsigned int id = 0; id < lists.size(); id++) {
+                int result = test(*lists[id], threads, vals, i, expected, max_len);
+                if (id == 0) {
+                    expected = result;
+                }
+                lists[id]->clear();
+            }
+        }
+        free(vals);
+    }
+}
+
+bool test_sanity(List<elem_t>& list)
 {
     omp_set_num_threads(1);
     const int iters = 100;
@@ -88,7 +116,9 @@ void test_sanity(List<elem_t>& list)
     for (int i = 0; i < iters; i++) {
         elem_t x = list[i];
         if (x != i) {
-            cout << "Sanity test failed! You suck! (list[" << i << "] was " << x << ")" << endl;
+            ostringstream message;
+            message << "You suck! list[" << i << "] was " << x << ")";
+            print_debug_result("Sanity", list.name(), iters, 1, false, nan(""), &message);
         }
     }
 
@@ -98,28 +128,26 @@ void test_sanity(List<elem_t>& list)
     }
 
     if (list.isEmpty()) {
-        cout << "Sanity test passed!" << endl;
+        print_debug_result("Sanity", list.name(), iters, 1, true, nan(""), NULL);
+        return true;
     } else {
-        cout << "Sanity test failed! You suck!" << endl;
+        ostringstream message;
+        message << "You suck! list.length() was " << list.length();
+        print_debug_result("Sanity", list.name(), iters, 1, false, nan(""), &message);
+        return false;
     }
 }
 
-void test_length(List<elem_t>& list, int threads, int num_nums)
+int test_length(List<elem_t>& list, int threads, elem_t* vals, int num_vals, int expected_length, int max_length)
 {
     omp_set_num_threads(threads);
-
-    elem_t* nums = (elem_t*)malloc(num_nums * sizeof(elem_t));
-
-    for (int i = 0; i < num_nums; i++) {
-        nums[i] = rand();
-    }
 
     struct timeval start, end;
     gettimeofday(&start, NULL);
 
     #pragma omp parallel for
-    for (int i = 0; i < num_nums; i++) {
-        list.insert(nums[i]);
+    for (int i = 0; i < num_vals; i++) {
+        list.insert(vals[i]);
     }
 
     gettimeofday(&end, NULL);
@@ -127,43 +155,28 @@ void test_length(List<elem_t>& list, int threads, int num_nums)
     double elapsed = ((double)((end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec))) / 1000000.0f;
 
     int length = list.length();
-    if (length == num_nums) {
-        printf("Length test on %d numbers with %d threads passed! (%.3f seconds)\n", num_nums, threads, elapsed);
+    if (expected_length < 0 || length == expected_length) {
+        print_result("Length", list.name(), num_vals, threads, true, elapsed, NULL);
     } else {
-        printf("Length test on %d numbers with %d threads failed! (expected %d, actual %d)\n", num_nums, threads, num_nums, length);
-        // CoarseGrainedList<elem_t> expected = *(new CoarseGrainedList<elem_t>());
-        // for (int i = 0; i < num_nums; i++) {
-        //     expected.insert(nums[i]);
-        // }
-
-        // for (int i = 0; i < num_nums; i++) {
-        //     if (list[i] != expected[i]) {
-        //         cout << "list[" << i << "] = " << list[i] << " (expected " << expected[i] << ")" << endl;
-        //     }
-        // }
+        ostringstream message;
+        message << "length was " << length << " (expected " << expected_length << ")";
+        print_result("Length", list.name(), num_vals, threads, false, elapsed, &message);
     }
+    return length;
 }
 
-void test_pressure(List<elem_t>& list, int threads, int num_nums)
+int test_pressure(List<elem_t>& list, int threads, elem_t* vals, int num_vals, int expected_length, int max_length)
 {
-    const int max_len = 50;
-
     omp_set_num_threads(threads);
-
-    elem_t* nums = (elem_t*)malloc(num_nums * sizeof(elem_t));
-
-    for (int i = 0; i < num_nums; i++) {
-        nums[i] = i;
-    }
 
     struct timeval start, end;
     gettimeofday(&start, NULL);
 
     #pragma omp parallel for
-    for (int i = 0; i < num_nums; i++) {
-        list.insert(nums[i]);
-        if (i >= max_len) {
-            list.remove(nums[i]);
+    for (int i = 0; i < num_vals; i++) {
+        list.insert(vals[i]);
+        if (i >= max_length) {
+            list.remove(vals[i]);
         }
     }
 
@@ -172,9 +185,46 @@ void test_pressure(List<elem_t>& list, int threads, int num_nums)
     double elapsed = ((double)((end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec))) / 1000000.0f;
 
     int length = list.length();
-    if (length == max_len) {
-        printf("Pressure test on %d numbers with %d threads passed! (%.3f seconds)\n", num_nums, threads, elapsed);
+    ostringstream label;
+    label << "Pressure-" << max_length;
+    if (expected_length < 0 || length == expected_length) {
+        print_result(label.str(), list.name(), num_vals, threads, true, elapsed, NULL);
     } else {
-        printf("Pressure test on %d numbers with %d threads failed! (expected %d, actual %d)\n", num_nums, threads, max_len, length);
+        ostringstream message;
+        message << "length was " << length << " (expected " << expected_length << ")";
+        print_result(label.str(), list.name(), num_vals, threads, true, elapsed, &message);
     }
+    return length;
+}
+
+void print_result(string test, string list, int vals, int threads, bool passed, double duration, ostringstream* error)
+{
+    cout << left << setfill(' ') << " "
+        << setw(21) << test
+        << setw(17) << list
+        << setw(11) << vals 
+        << setw(6) << threads
+        << setw(10) << (passed ? "pass" : "FAIL")
+        << setw(14) << setprecision(3) << fixed << duration;
+
+    if (!passed && error != NULL) {
+        cout << " " << error->str();
+    }
+
+    cout << endl;
+}
+
+void print_header()
+{
+    cout
+        << left << setfill(' ') << " "
+        << setw(18) << "Test"
+        << setw(17) << "List"
+        << setw(14) << "iterations"
+        << setw(6) << "P"
+        << setw(10) << "Result"
+        << setw(14) << "Duration (sec)"
+        << endl;
+
+    cout << left << setw(80) << setfill('-') << "" << endl;
 }

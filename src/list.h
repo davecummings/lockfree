@@ -9,7 +9,7 @@ class Node
 {
 public:
 	T val;
-	Node* next;
+	Node<T>* next;
 };
 
 template <typename T>
@@ -21,6 +21,8 @@ public:
 	virtual bool contains(T val) = 0;
 	virtual int length() = 0;
 	virtual bool isEmpty() = 0;
+	virtual void clear() = 0;
+	virtual std::string name() = 0;
 	virtual T operator[](int index) = 0;
 };
 
