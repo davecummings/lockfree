@@ -4,7 +4,7 @@
 #include <iostream>
 #include <cstdlib>
 
-
+template<typename T>
 class Node
 {
 public:
@@ -12,6 +12,7 @@ public:
 	Node<T>* next;
 };
 
+template<typename T>
 class List
 {
 public:
