@@ -31,7 +31,7 @@
           <h3>
             It's a race!
         </h3>
-        <p>When multiple threads are making concurrent modifications to a shared data structure, a typical strategy is to use a lock so that only one thread can modify the structure at a time. We’re exploring alternative thread-safe schemes: fine-grained locks, which lock only the most necessary parts of the structure; and atomic memory operations, which allow us to forego locks altogether. Though each of these approaches has its appeals and its drawbacks, we have found lock-free structures to be sensationally faster under conditions of high contention. And perhaps even more important than speed, we’ve discovered lock-free structures to be more energy-efficient than their counterparts.</p>
+        <p>When multiple threads are making concurrent modifications to a shared data structure, a typical strategy is to use a lock so that only one thread can modify the structure at a time. We’re exploring alternative thread-safe schemes: <b>fine-grained locks</b>, which lock only the most necessary parts of the structure; and <b>atomic memory operations</b>, which allow us to forego locks altogether. Though each of these approaches has its appeals and its drawbacks, <b>we have found lock-free structures to be sensationally faster under conditions of high contention.</b> And perhaps even more important than speed, <b>we’ve discovered lock-free structures to be more energy-efficient than their counterparts.</b></p>
         </section>
 
         <aside id="sidebar">
