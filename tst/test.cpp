@@ -25,16 +25,19 @@
 
 using namespace std;
 
-typedef long elem_t;
+typedef long key;
+typedef int val;
 
-bool test_sanity(List<elem_t>& list);
+bool test_sanity(List<key, val>& list);
 
-int test_length(List<elem_t>& list, int threads, elem_t* vals, int num_vals, int expected_length, int max_length);
+int test_length(List<key, val>& list, int threads, key* keys,
+     val* vals, int num_vals, int expected_length, int max_length);
 
-int test_pressure(List<elem_t>& list, int threads, elem_t* vals, int num_vals, int expected_length, int max_length);
+int test_pressure(List<key, val>& list, int threads, key* keys,
+     val* vals, int num_vals, int expected_length, int max_length);
 
-void run_test_loop(vector<List<elem_t>*>& lists,
-    int (*test)(List<elem_t>&, int, elem_t*, int, int, int),
+void run_test_loop(vector<List<key, val>*>& lists,
+    int (*test)(List<key,val>&, int, key*, val*, int, int, int),
     int start_val, int end_val, int start_p_2, int end_p_2, int max_len);
 
 void print_result(string test, string list, int vals, int threads, bool passed, double duration, ostringstream* error);
@@ -45,10 +48,10 @@ int main()
 {
     cout << "Running test suite (maximimum threads: " << omp_get_max_threads() << ")" << endl;
 
-    vector<List<elem_t>*> lists;
-    lists.push_back(new CoarseGrainedList<elem_t>());
-    lists.push_back(new FineGrainedList<elem_t>());
-    lists.push_back(new LockFreeList<elem_t>());
+    vector<List<key, val>*> lists;
+    lists.push_back(new CoarseGrainedList<key, val>());
+    lists.push_back(new FineGrainedList<key, val>());
+    lists.push_back(new LockFreeList<key, val>());
 
     bool isSane = true;
     for (unsigned int i = 0; i < lists.size(); i++) {
@@ -76,13 +79,15 @@ int main()
     return 0;
 }
 
-void run_test_loop(vector<List<elem_t>*>& lists,
-    int (*test)(List<elem_t>&, int, elem_t*, int, int, int),
+void run_test_loop(vector<List<key,val>*>& lists,
+    int (*test)(List<key,val>&, int, key*, val*, int, int, int),
     int start_val, int end_val, int start_p_2, int end_p_2, int max_len)
 {
     for (int i = start_val; i < end_val; i *= 10) {
-        elem_t* vals = (elem_t*)malloc(i * sizeof(elem_t));
+        val* vals = (val*)malloc(i * sizeof(val));
+        key* keys = (key*)malloc(i * sizeof(key));
         for (int j = 0; j < i; j++) {
+            keys[i] = rand();
             vals[j] = rand();
         }
 
@@ -91,7 +96,7 @@ void run_test_loop(vector<List<elem_t>*>& lists,
             int expected = -1;
 
             for (unsigned int id = 0; id < lists.size(); id++) {
-                int result = test(*lists[id], threads, vals, i, expected, max_len);
+                int result = test(*lists[id], threads, keys, vals, i, expected, max_len);
                 if (id == 0) {
                     expected = result;
                 }
@@ -99,17 +104,18 @@ void run_test_loop(vector<List<elem_t>*>& lists,
             }
         }
         free(vals);
+        free(keys);
     }
 }
 
-bool test_sanity(List<elem_t>& list)
+bool test_sanity(List<key,val>& list)
 {
     omp_set_num_threads(1);
     const int iters = 100;
 
     #pragma omp parallel for
     for (int i = 0; i < iters; i++) {
-        list.insert(i);
+        list.insert(i, i);
     }
 
     #pragma omp parallel for
@@ -132,13 +138,13 @@ bool test_sanity(List<elem_t>& list)
         return true;
     } else {
         ostringstream message;
-        message << "You suck! list.length() was " << list.length();
+        message << "You suck! list.length() was " << list.size();
         print_debug_result("Sanity", list.name(), iters, 1, false, nan(""), &message);
         return false;
     }
 }
 
-int test_length(List<elem_t>& list, int threads, elem_t* vals, int num_vals, int expected_length, int max_length)
+int test_length(List<key,val>& list, int threads, key* keys, val* vals, int num_vals, int expected_length, int max_length)
 {
     omp_set_num_threads(threads);
 
@@ -147,25 +153,25 @@ int test_length(List<elem_t>& list, int threads, elem_t* vals, int num_vals, int
 
     #pragma omp parallel for
     for (int i = 0; i < num_vals; i++) {
-        list.insert(vals[i]);
+        list.insert(keys[i], vals[i]);
     }
 
     gettimeofday(&end, NULL);
 
     double elapsed = ((double)((end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec))) / 1000000.0f;
 
-    int length = list.length();
-    if (expected_length < 0 || length == expected_length) {
+    int size = list.size();
+    if (expected_length < 0 || size == expected_length) {
         print_result("Length", list.name(), num_vals, threads, true, elapsed, NULL);
     } else {
         ostringstream message;
-        message << "length was " << length << " (expected " << expected_length << ")";
+        message << "length was " << size << " (expected " << expected_length << ")";
         print_result("Length", list.name(), num_vals, threads, false, elapsed, &message);
     }
-    return length;
+    return size;
 }
 
-int test_pressure(List<elem_t>& list, int threads, elem_t* vals, int num_vals, int expected_length, int max_length)
+int test_pressure(List<key, val>& list, int threads, key* keys, val* vals, int num_vals, int expected_length, int max_length)
 {
     omp_set_num_threads(threads);
 
@@ -174,9 +180,9 @@ int test_pressure(List<elem_t>& list, int threads, elem_t* vals, int num_vals, i
 
     #pragma omp parallel for
     for (int i = 0; i < num_vals; i++) {
-        list.insert(vals[i]);
+        list.insert(keys[i], vals[i]);
         if (i >= max_length) {
-            list.remove(vals[i]);
+            list.remove(keys[i]);
         }
     }
 
@@ -184,7 +190,7 @@ int test_pressure(List<elem_t>& list, int threads, elem_t* vals, int num_vals, i
 
     double elapsed = ((double)((end.tv_sec * 1000000 + end.tv_usec) - (start.tv_sec * 1000000 + start.tv_usec))) / 1000000.0f;
 
-    int length = list.length();
+    int length = list.size();
     ostringstream label;
     label << "Pressure-" << max_length;
     if (expected_length < 0 || length == expected_length) {
@@ -202,7 +208,7 @@ void print_result(string test, string list, int vals, int threads, bool passed, 
     cout << left << setfill(' ') << " "
         << setw(21) << test
         << setw(17) << list
-        << setw(11) << vals 
+        << setw(11) << vals
         << setw(6) << threads
         << setw(10) << (passed ? "pass" : "FAIL")
         << setw(14) << setprecision(3) << fixed << duration;
