@@ -15,9 +15,9 @@
 #include "../src/fine_grained_list.h"
 #include "../src/lock_free_list.h"
 
-#define DEBUG
+// #define DEBUGGING
 
-#ifdef DEBUG
+#ifdef DEBUGGING
 #define print_debug_result print_result
 #else
 #define print_debug_result(...)

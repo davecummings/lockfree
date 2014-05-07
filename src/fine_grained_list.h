@@ -5,33 +5,34 @@
 
 #include "list.h"
 
-template<typename K, typename T>
-class FineGrainedNode : public Node<K,T>
+template<typename T>
+class FineGrainedNode : public Node<T>
 {
 public:
-	FineGrainedNode(K key, T val);
-	FineGrainedNode<K,T>* next;
+	FineGrainedNode();
+	FineGrainedNode<T>* next;
 	pthread_mutex_t* lock;
 	~FineGrainedNode();
 };
 
-template<typename K, typename T>
-class FineGrainedList : public List<K,T>
+template<typename T>
+class FineGrainedList : public List<T>
 {
 private:
-	FineGrainedNode<K,T>* _head;
+	FineGrainedNode<T>* _head;
 	pthread_mutex_t* _lock;
-
+    
 public:
 	FineGrainedList();
-	virtual void insert(K key, T val);
-	virtual bool remove(K key);
-	virtual bool contains(K key);
-	T operator[](K key);
-	virtual int size();
+	virtual bool insert(T val);
+	virtual bool remove(T val);
+	virtual bool contains(T val);
+	virtual int length();
 	virtual bool isEmpty();
 	virtual void clear();
 	virtual std::string name();
+    virtual void printList();
+	T operator[](int index);
 	~FineGrainedList();
 };
 
