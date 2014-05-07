@@ -1,5 +1,5 @@
 CC=g++
-CFLAGS=-std=c++11 -Wall -Werror -o test src/*.cpp tst/*.cpp
+CFLAGS=-std=c++11 -Wall -Werror -o test
 MAC_SOURCES=src/*.cpp tst/smc.cpp tst/monitor.cpp tst/test_device.cpp
 LINUX_SOURCES=src/*.cpp tst/monitor.cpp tst/test.cpp
 

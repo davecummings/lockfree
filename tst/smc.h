@@ -93,7 +93,7 @@ typedef struct {
 
 // SMC keys by model
 // { CPU power, DDR power, SSD power }
-const std::string keys_MacBookAir6_1[3] = { "PC0R", "PPBR", "PPBR" };
+const std::string keys_MacBookAir6_1[3] = { "PC0R", "PM3C", "PSDC" };
 
 
 // prototypes
