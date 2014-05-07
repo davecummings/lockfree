@@ -1,25 +1,29 @@
 #include <stdexcept>
+#include <iostream>
+#include <pthread.h>
 
+#include "list.h"
 #include "coarse_grained_list.h"
 
-template<typename T>
-CoarseGrainedList<T>::CoarseGrainedList() : List<T>()
+
+template<typename K, typename T>
+CoarseGrainedList<K,T>::CoarseGrainedList() : List<K,T>()
 {
 	_head = NULL;
     _length = 0;
-    _lock = (pthread_mutex_t*)malloc(sizeof(pthread_mutex_t));
+    _lock = (pthread_mutex_t*) malloc(sizeof(pthread_mutex_t));
 	pthread_mutex_init(_lock, NULL);
 }
 
-template<typename T>
-CoarseGrainedList<T>::~CoarseGrainedList()
+template<typename K, typename T>
+CoarseGrainedList<K,T>::~CoarseGrainedList()
 {
     pthread_mutex_lock(_lock);
 
-	Node<T>* node = _head;
+	Node<K,T>* node = _head;
 	while (node != NULL)
     {
-		Node<T>* tmp = node;
+		Node<K,T>* tmp = node;
 		node = node->next;
 		delete tmp;
 	}
@@ -29,61 +33,75 @@ CoarseGrainedList<T>::~CoarseGrainedList()
     free(_lock);
 }
 
-template<typename T>
-bool CoarseGrainedList<T>::insert(T val)
+template <typename K, typename T>
+void CoarseGrainedList<K,T>::insert(K key, T val)
 {
-	Node<T>* node = new Node<T>();
-
-	node->val = val;
-
 	pthread_mutex_lock(_lock);
 
-	if (_head == NULL) {
+	if (_head == NULL)
+    {
+        Node<K,T>* node = new Node<K,T>(key, val);
 		node->next = NULL;
 		_head = node;
-	} else if (val < _head->val) {
+        _length++;
+        pthread_mutex_unlock(_lock);
+        return;
+    }
+
+	if (key < _head->key)
+    {
+        Node<K,T>* node = new Node<K,T>(key, val);
 		node->next = _head;
 		_head = node;
-
-	} else if (val == _head->val) {
+        _length++;
         pthread_mutex_unlock(_lock);
-        return false;
-    } else {
-		Node<T>* cur = _head->next;
-		Node<T>* prev = _head;
-
-		while (cur != NULL) {
-			if (val < cur->val) {
-				break;
-			} else if (val == cur->val) {
-                pthread_mutex_unlock(_lock);
-                return false;
-            }
-			prev = cur;
-			cur = cur->next;
-		}
-
-		prev->next = node;
-		node->next = cur;
+        return;
 	}
 
-    _length++;
-	pthread_mutex_unlock(_lock);
-	return true;
+    if (key == _head->key)
+    {
+        _head->val = val;
+        pthread_mutex_unlock(_lock);
+        return;
+    }
+
+	Node<K,T>* cur = _head->next;
+	Node<K,T>* prev = _head;
+
+	while (cur != NULL) {
+		if (key < cur->key)
+        {
+            Node<K,T>* node = new Node<K,T>(key, val);
+            prev->next = node;
+            node->next = cur;
+            break;
+        }
+		if (key == cur->key)
+        {
+            cur->val = val;
+            break;
+        }
+		prev = cur;
+		cur = cur->next;
+	}
+
+    pthread_mutex_unlock(_lock);
 }
 
-template<typename T>
-bool CoarseGrainedList<T>::remove(T val)
+template<typename K, typename T>
+bool CoarseGrainedList<K,T>::remove(K key)
 {
     pthread_mutex_lock(_lock);
 
-    if (_head == NULL) {
+    if (_head == NULL)
+    {
         pthread_mutex_unlock(_lock);
         return false;
     }
 
-    if (_head->val == val) {
-        Node<T>* tmp = _head->next;
+    if (_head->key == key)
+    {
+        Node<K,T>* tmp = _head->next;
         delete _head;
         _head = tmp;
         _length--;
@@ -91,10 +109,12 @@ bool CoarseGrainedList<T>::remove(T val)
         return true;
     }
 
-    Node<T>* prev = _head;
-    Node<T>* cur = prev->next;
-    while (cur != NULL) {
-        if (val == cur->val) {
+    Node<K,T>* prev = _head;
+    Node<K,T>* cur = prev->next;
+    while (cur != NULL)
+    {
+        if (key == cur->key)
+        {
             prev->next = cur->next;
             delete cur;
             _length--;
@@ -110,14 +130,14 @@ bool CoarseGrainedList<T>::remove(T val)
     return false;
 }
 
-template<typename T>
-bool CoarseGrainedList<T>::contains(T val)
+template<typename K, typename T>
+bool CoarseGrainedList<K,T>::contains(K key)
 {
     pthread_mutex_lock(_lock);
 
-    Node<T>* cur = _head;
+    Node<K,T>* cur = _head;
     while (cur != NULL) {
-        if (val == cur->val) {
+        if (key == cur->key) {
             pthread_mutex_unlock(_lock);
             return true;
         }
@@ -129,61 +149,61 @@ bool CoarseGrainedList<T>::contains(T val)
     return false;
 }
 
-template<typename T>
-int CoarseGrainedList<T>::length()
+template<typename K, typename T>
+T CoarseGrainedList<K,T>::operator[](K key)
+{
+    pthread_mutex_lock(_lock);
+
+    Node<K,T>* cur = _head;
+    while (cur != NULL) {
+        if (key == cur->key) {
+            T val = cur->val;
+            pthread_mutex_unlock(_lock);
+            return val;
+        }
+
+        cur = cur->next;
+    }
+
+    pthread_mutex_unlock(_lock);
+    throw std::out_of_range("Key not in set");
+}
+
+template<typename K, typename T>
+int CoarseGrainedList<K,T>::size()
 {
     return _length;
 }
 
-template<typename T>
-bool CoarseGrainedList<T>::isEmpty()
+template<typename K, typename T>
+bool CoarseGrainedList<K,T>::isEmpty()
 {
-    return _head == NULL;
+    return _length == 0;
 }
 
-template<typename T>
-void CoarseGrainedList<T>::clear()
+template<typename K, typename T>
+void CoarseGrainedList<K,T>::clear()
 {
     pthread_mutex_lock(_lock);
-    Node<T>* node = _head;
+    Node<K,T>* node = _head;
     _head = NULL;
     _length = 0;
-    pthread_mutex_unlock(_lock);
 
     while (node != NULL) {
-        Node<T>* prev = node;
+        Node<K,T>* prev = node;
         node = node->next;
         delete prev;
     }
 
+    pthread_mutex_unlock(_lock);
 }
 
-template<typename T>
-std::string CoarseGrainedList<T>::name()
+template<typename K, typename T>
+std::string CoarseGrainedList<K,T>::name()
 {
     return "CoarseGrained";
 }
 
-template<typename T>
-T CoarseGrainedList<T>::operator[](int index)
-{
-    pthread_mutex_lock(_lock);
-    int i = 0;
-    Node<T>* node = _head;
-
-    while (node != NULL) {
-        if (index == i) {
-            pthread_mutex_unlock(_lock);
-            return node->val;
-        }
-        i++;
-        node = node->next;
-    }
-
-    pthread_mutex_unlock(_lock);
-    throw std::out_of_range("Index exceeds list length.");
-}
-
-template class CoarseGrainedList<int>;
-template class CoarseGrainedList<double>;
-template class CoarseGrainedList<long>;
+template class CoarseGrainedList<int, std::string>;
+template class CoarseGrainedList<double, int>;
+template class CoarseGrainedList<long, float>;

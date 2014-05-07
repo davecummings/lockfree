@@ -4,172 +4,187 @@
 
 #include "lock_free_list.h"
 
-template<typename T>
-LockFreeList<T>::LockFreeList() : List<T>()
+template<typename K, typename T>
+LockFreeList<K,T>::LockFreeList() : List<K,T>()
 {
-	_head = new Node<T>();
-	_tail = new Node<T>();
+	_head = new Node<K,T>(0,0);
+	_tail = new Node<K,T>(0,0);
 	_head->next = _tail;
 }
 
-template<typename T>
-LockFreeList<T>::~LockFreeList()
+template<typename K, typename T>
+LockFreeList<K,T>::~LockFreeList()
 {
-	while (_head->next != _tail) {
-		remove(_head->next->val);
-	}
+	while (_head->next != _tail)
+		remove(_head->next->key);
+
 	delete _head;
 	delete _tail;
 }
 
-template<typename T>
-Node<T>* LockFreeList<T>::getMarkedReference(Node<T>* n)
+template<typename K, typename T>
+Node<K,T>* LockFreeList<K,T>::getMarkedReference(Node<K,T>* n)
 {
 	long p = (long) n;
 	p = p | 1;
-	return (Node<T>*) p;
+	return (Node<K,T>*) p;
 }
 
-template<typename T>
-Node<T>* LockFreeList<T>::getUnmarkedReference(Node<T>* n)
+template<typename K, typename T>
+Node<K,T>* LockFreeList<K,T>::getUnmarkedReference(Node<K,T>* n)
 {
 	long p = (long) n;
 	p = (p >> 1) << 1;
-	return (Node<T>*) p;
+	return (Node<K,T>*) p;
 }
 
-template<typename T>
-bool LockFreeList<T>::isMarkedReference(Node<T>* n)
+template<typename K, typename T>
+bool LockFreeList<K,T>::isMarkedReference(Node<K,T>* n)
 {
 	long p = (long) n;
 	p = p & 1;
 	return (bool) p;
 }
 
-template<typename T>
-void LockFreeList<T>::search(T val, Node<T>** leftNodeRef, Node<T>** rightNodeRef)
+template<typename K, typename T>
+void LockFreeList<K,T>::search(K key,
+	Node<K,T>** leftNodeRef, Node<K,T>** rightNodeRef)
 {
-	Node<T>* leftNodeNext = NULL;
+	Node<K,T>* leftNodeNext = NULL;
 
-	while (true) {
-		Node<T>* prev = _head;
-		Node<T>* cur = prev->next;
+	while (true)
+	{
+		Node<K,T>* prev = _head;
+		Node<K,T>* cur = prev->next;
 
 		/* 1: Find leftNode and rightNode */
-		do {
-			if (!isMarkedReference(cur)) {
+		do
+		{
+			if (!isMarkedReference(cur))
+			{
 				*leftNodeRef = prev;
 				leftNodeNext = cur;
 			}
 			prev = getUnmarkedReference(cur);
-			if (prev == _tail) {
+			if (prev == _tail)
 				break;
-			}
 			cur = prev->next;
-		} while (isMarkedReference(cur) || prev->val < val);
+		} while (isMarkedReference(cur) || prev->key < key);
 		*rightNodeRef = prev;
 
 		/* 2: Check if nodes are adjacent */
-		if (leftNodeNext == *rightNodeRef) {
-			if (*rightNodeRef != _tail && isMarkedReference((*rightNodeRef)->next)) {
+		if (leftNodeNext == *rightNodeRef)
+		{
+			if (*rightNodeRef != _tail &&
+				isMarkedReference((*rightNodeRef)->next))
 				continue;
-			} else {
-				return;
-			}
+			else return;
 		}
 
 		/* 3: Remove one or more marked nodes */
-		if (__sync_bool_compare_and_swap(&((*leftNodeRef)->next), leftNodeNext, *rightNodeRef)) {
+		if (__sync_bool_compare_and_swap(&((*leftNodeRef)->next),
+			leftNodeNext, *rightNodeRef))
+		{
 			// right node got marked while performing operation
-			if (*rightNodeRef != _tail && isMarkedReference((*rightNodeRef)->next)) {
+			if (*rightNodeRef != _tail &&
+				isMarkedReference((*rightNodeRef)->next))
 				continue;
-			} else {
-				// free leftNode through rightNode, inclusive
-				return;
-			}
+			// free leftNode through rightNode, exclusive
+			else return;
 		}
 	}
 }
 
-template<typename T>
-bool LockFreeList<T>::insert(T val)
+template<typename K, typename T>
+void LockFreeList<K,T>::insert(K key, T val)
 {
-	Node<T>* n = new Node<T>();
-	n->val = val;
-	Node<T>* leftNode;
-	Node<T>* rightNode;
+	Node<K,T>* n = new Node<K,T>(key, val);
+	Node<K,T>* leftNode;
+	Node<K,T>* rightNode;
 
 	while (true) {
-		search(val, &leftNode, &rightNode);
+		search(key, &leftNode, &rightNode);
 		// already in the list
-		if (rightNode != _tail && rightNode->val == val) {
-			return false;
+		if (rightNode != _tail && rightNode->key == key)
+		{
+			rightNode->val = val;
+			delete n;
 		}
-		n->next = rightNode;
-		if (__sync_bool_compare_and_swap(&leftNode->next, rightNode, n)) {
-			return true;
+		else
+		{
+			n->next = rightNode;
+			if (__sync_bool_compare_and_swap(&leftNode->next, rightNode, n))
+				return;
 		}
 	}
 }
 
-template<typename T>
-bool LockFreeList<T>::remove(T val)
+template<typename K, typename T>
+bool LockFreeList<K,T>::remove(K key)
 {
-	Node<T>* leftNode;
-	Node<T>* rightNode;
-	Node<T>* rightNodeNext;
+	Node<K,T>* leftNode;
+	Node<K,T>* rightNode;
+	Node<K,T>* rightNodeNext;
 
 	while (true) {
-		search(val, &leftNode, &rightNode);
+		search(key, &leftNode, &rightNode);
 
 		// if node not in list
-		if (rightNode == _tail || rightNode->val != val) {
+		if (rightNode == _tail || rightNode->key != key)
 			return false;
-		}
+
 		rightNodeNext = rightNode->next;
 
 		// mark for deletion if not already
-		if (!isMarkedReference(rightNodeNext)) {
+		if (!isMarkedReference(rightNodeNext))
+		{
 			if (__sync_bool_compare_and_swap(&rightNode->next, rightNodeNext,
-					getMarkedReference(rightNodeNext))) {
-				break;
-			}
+					getMarkedReference(rightNodeNext))) break;
 		}
 	}
 
 	/* Try to physically delete the node here.
 		Otherwise, call search to delete it. */
-	if (!__sync_bool_compare_and_swap(&leftNode->next, rightNode, rightNodeNext)) {
-		search(rightNode->val, &leftNode, &rightNode);
-	} else {
-		// free rightNode
-	}
+	if (!__sync_bool_compare_and_swap(&leftNode->next, rightNode, rightNodeNext))
+		search(rightNode->key, &leftNode, &rightNode);
 
 	return true;
 }
 
-template<typename T>
-bool LockFreeList<T>::contains(T val)
+template<typename K, typename T>
+bool LockFreeList<K,T>::contains(K key)
 {
-	Node<T>* leftNode;
-	Node<T>* rightNode;
+	Node<K,T>* leftNode;
+	Node<K,T>* rightNode;
 
-	search(val, &leftNode, &rightNode);
-	if (rightNode == _tail || rightNode->val != val) {
+	search(key, &leftNode, &rightNode);
+	if (rightNode == _tail || rightNode->key != key)
 		return false;
-	} else {
+	else
 		return true;
-	}
 }
 
-template<typename T>
-bool LockFreeList<T>::isEmpty()
+template<typename K, typename T>
+T LockFreeList<K,T>::operator[](K key)
+{
+	Node<K,T>* leftNode;
+	Node<K,T>* rightNode;
+
+	search(key, &leftNode, &rightNode);
+	if (rightNode == _tail || rightNode->key != key)
+		throw std::out_of_range("Key not in set.");
+	else
+		return rightNode->val;
+}
+
+template<typename K, typename T>
+bool LockFreeList<K,T>::isEmpty()
 {
 	return _head->next == _tail;
 }
 
-template<typename T>
-int LockFreeList<T>::length()
+template<typename K, typename T>
+int LockFreeList<K,T>::size()
 {
 	// Node<T;>* leftNode;
 	// Node<T>** leftNodeRef = &leftNode;
@@ -198,7 +213,7 @@ int LockFreeList<T>::length()
 	// 	}
 	// 	*rightNodeRef = prev;
 
-	// 	 2: Check if nodes are adjacent 
+	// 	 2: Check if nodes are adjacent
 	// 	if (leftNodeNext == *rightNodeRef) {
 	// 		if (*rightNodeRef != _tail && isMarkedReference((*rightNodeRef)->next)) {
 	// 			continue;
@@ -220,29 +235,28 @@ int LockFreeList<T>::length()
 
 	// return length;
 
-	Node<T>* node = getUnmarkedReference(_head->next);
+	Node<K,T>* node = getUnmarkedReference(_head->next);
 	int length = 0;
 
 	while (node != _tail && node != NULL) {
 		length++;
-		node = node->next;
-		node = getUnmarkedReference(node);
+		node = getUnmarkedReference(node->next);
 	}
 
 	return length;
 }
 
-template<typename T>
-void LockFreeList<T>::clear()
+template<typename K, typename T>
+void LockFreeList<K,T>::clear()
 {
-	Node<T>* node = getUnmarkedReference(_head);
-	Node<T>* tail = getUnmarkedReference(_tail);
-	_head = new Node<T>();
-	_tail = new Node<T>();
+	Node<K,T>* node = getUnmarkedReference(_head);
+	Node<K,T>* tail = getUnmarkedReference(_tail);
+	_head = new Node<K,T>();
+	_tail = new Node<K,T>();
 	_head->next = _tail;
 
 	while (node != tail) {
-		Node<T>* prev = node;
+		Node<K,T>* prev = node;
 		node = node->next;
 		delete prev;
 	}
@@ -250,50 +264,27 @@ void LockFreeList<T>::clear()
 	delete tail;
 }
 
-template<typename T>
-std::string LockFreeList<T>::name()
+template<typename K, typename T>
+std::string LockFreeList<K,T>::name()
 {
 	return "LockFree";
 }
 
-template<typename T>
-void LockFreeList<T>::printList()
+template<typename K, typename T>
+void LockFreeList<K,T>::printList()
 {
 	std::cout << "[";
 
-	Node<T>* cur = getUnmarkedReference(_head);
+	Node<K,T>* cur = getUnmarkedReference(_head);
 
 	while (true) {
 		cur = getUnmarkedReference(cur->next);
 		if (cur == _tail || cur == NULL) {
 			break;
 		}
-		std::cout << cur->val << ",";
+		std::cout << "(" << cur->key << "," << cur->val << "),";
 	}
 
 	std::cout << "]" << std::endl;
 
 }
-
-template<typename T>
-T LockFreeList<T>::operator[](int index)
-{
-	Node<T>* node = getUnmarkedReference(_head->next);
-	int i = 0;
-
-	while (node != _tail && node != NULL) {
-		if (index == i) {
-			return node->val;
-		}
-		i++;
-		node = node->next;
-		node = getUnmarkedReference(node);
-	}
-
-	std::cout << "Index: " << index << std::endl;
-	throw std::out_of_range("Index exeeds list length.");
-}
-
-template class LockFreeList<int>;
-template class LockFreeList<double>;
-template class LockFreeList<long>;
