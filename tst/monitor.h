@@ -85,6 +85,7 @@ private:
     
     static void* monitor_loop(void* args)
     {
+#if defined (__APPLE__)
         double then = CycleTimer::currentSeconds();
         MonitorLoopArgs* loopArgs = (MonitorLoopArgs*)(args);
         
@@ -105,6 +106,7 @@ private:
         } while (*(loopArgs->runningPtr));
         
         SMCClose();
+#endif
         
         free(args);
         

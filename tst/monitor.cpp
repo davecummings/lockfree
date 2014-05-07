@@ -19,7 +19,7 @@ void Monitor::start(bool monitorPower)
     if (monitorPower) {
         std::cerr << "Power monitoring is not supported on this device." << std::endl;
     }
-    _monitorPower = false;
+    monitorPower = false;
 #endif
     _running = true;
     _reading = monitorPower;
@@ -67,9 +67,10 @@ void Monitor::stop()
 bool Monitor::canMonitorPower()
 {
 #if defined (__APPLE__)
-    return false;
-#endif
     return SMCGetCPUPower >= 0 && SMCGetDDRPower >= 0 && SMCGetSSDPower >= 0;
+#endif
+    return false;
+    
 }
 
 double Monitor::getElapsedSeconds()

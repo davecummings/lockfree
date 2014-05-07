@@ -33,10 +33,10 @@ typedef int v_t;
 bool test_sanity(List<k_t, v_t>& list);
 
 int test_size(List<k_t, v_t>& list, int threads, k_t* keys,
-     v_t* vals, int num_vals, int expected_length, int max_length);
+     v_t* vals, int num_vals, int expected_size, int max_size);
 
 int test_jam(List<k_t, v_t>& list, int threads, k_t* keys,
-     v_t* vals, int num_vals, int expected_length, int max_length);
+     v_t* vals, int num_vals, int expected_size, int max_size);
 
 void run_test_loop(vector<List<k_t, v_t>*>& lists,
     int (*test)(List<k_t,v_t>&, int, k_t*, v_t*, int, int, int),
@@ -53,11 +53,11 @@ int main(int argc, char** argv)
 {
     char* filenamebase;
     cout << "Running test suite (maximimum threads: " << omp_get_max_threads() << ")" << endl;
-    if (argc == 1) {
-        filenamebase = argv[0];
+    if (argc == 2) {
+        filenamebase = argv[1];
         toCSV = true;
         cout << "Results being written to " << filenamebase << "-[pass].csv" << endl;
-    } else if (argc > 1) {
+    } else if (argc > 2) {
         cout << "Usage: ./test <filename>" << endl;
         cout << "Optional filename for output to CSV (given without extension)" << endl;
     }
@@ -88,9 +88,9 @@ int main(int argc, char** argv)
         }
         print_header();
 
-        run_test_loop(lists, test_length, 10000, 1000000, 0, 4, -1);
-        run_test_loop(lists, test_pressure, 1000000, 100000000, 0, 4, 128);
-        run_test_loop(lists, test_pressure, 1000000, 100000000, 0, 4, 16);
+        run_test_loop(lists, test_size, 10000, 1000000, 0, 4, -1);
+        run_test_loop(lists, test_jam, 1000000, 100000000, 0, 4, 128);
+        run_test_loop(lists, test_jam, 1000000, 100000000, 0, 4, 16);
 
         if (toCSV) {
             csvFile.close();
@@ -146,7 +146,7 @@ bool test_sanity(List<k_t, v_t>& list)
 
     #pragma omp parallel for
     for (int i = 0; i < iters; i++) {
-        val x = list[i];
+        v_t x = list[i];
         if (x != i) {
             ostringstream message;
             message << "You suck! list[" << i << "] was " << x << ")";
@@ -164,13 +164,13 @@ bool test_sanity(List<k_t, v_t>& list)
         return true;
     } else {
         ostringstream message;
-        message << "You suck! list.length() was " << list.size();
+        message << "You suck! list.size() was " << list.size();
         print_debug_result("Sanity", list.name(), iters, 1, false, nan(""), &message);
         return false;
     }
 }
 
-int test_size(List<k_t,val>& list, int threads, k_t* keys, v_t* vals, int num_vals, int expected_length, int max_length)
+int test_size(List<k_t, v_t>& list, int threads, k_t* keys, v_t* vals, int num_vals, int expected_size, int max_size)
 {
     omp_set_num_threads(threads);
 
@@ -185,17 +185,17 @@ int test_size(List<k_t,val>& list, int threads, k_t* keys, v_t* vals, int num_va
     double elapsed = monitor->getElapsedSeconds();
 
     int size = list.size();
-    if (expected_length < 0 || size == expected_length) {
-        print_result("size", list.name(), num_vals, threads, true, elapsed, NULL);
+    if (expected_size < 0 || size == expected_size) {
+        print_result("Size", list.name(), num_vals, threads, true, elapsed, NULL);
     } else {
         ostringstream message;
-        message << "length was " << size << " (expected " << expected_length << ")";
+        message << "Size was " << size << " (expected " << expected_size << ")";
         print_result("Size", list.name(), num_vals, threads, false, elapsed, &message);
     }
     return size;
 }
 
-int test_jam(List<k_t, v_t>& list, int threads, k_t* keys, v_t* vals, int num_vals, int expected_length, int max_length)
+int test_jam(List<k_t, v_t>& list, int threads, k_t* keys, v_t* vals, int num_vals, int expected_size, int max_size)
 {
     omp_set_num_threads(threads);
 
@@ -204,7 +204,7 @@ int test_jam(List<k_t, v_t>& list, int threads, k_t* keys, v_t* vals, int num_va
     #pragma omp parallel for
     for (int i = 0; i < num_vals; i++) {
         list.insert(keys[i], vals[i]);
-        if (i >= max_length) {
+        if (i >= max_size) {
             list.remove(keys[i]);
         }
     }
@@ -212,23 +212,23 @@ int test_jam(List<k_t, v_t>& list, int threads, k_t* keys, v_t* vals, int num_va
     monitor->stop();
     double elapsed = monitor->getElapsedSeconds();
 
-    int length = list.size();
+    int size = list.size();
     ostringstream label;
-    label << "Pressure-" << max_length;
-    if (expected_length < 0 || length == expected_length) {
+    label << "Jam-" << max_size;
+    if (expected_size < 0 || size == expected_size) {
         print_result(label.str(), list.name(), num_vals, threads, true, elapsed, NULL);
     } else {
         ostringstream message;
-        message << "length was " << length << " (expected " << expected_length << ")";
+        message << "size was " << size << " (expected " << expected_size << ")";
         print_result(label.str(), list.name(), num_vals, threads, true, elapsed, &message);
     }
-    return length;
+    return size;
 }
 
 void print_result(string test, string list, int vals, int threads, bool passed, double duration, ostringstream* error)
 {
     if (toCSV) {
-        file << test << "," << list << "," << vals << "," << threads << "," << (passed ? "pass" : "FAIL") << "," << setprecision(3) << fixed << duration << endl;
+        csvFile << test << "," << list << "," << vals << "," << threads << "," << (passed ? "pass" : "FAIL") << "," << setprecision(3) << fixed << duration << endl;
         if (!passed) {
             cerr << error->str() << endl;
         }
