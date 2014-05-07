@@ -70,21 +70,21 @@ void CoarseGrainedList<K,T>::insert(K key, T val)
 
 	while (cur != NULL) {
 		if (key < cur->key)
-        {
-            Node<K,T>* node = new Node<K,T>(key, val);
-            prev->next = node;
-            node->next = cur;
             break;
-        }
 		if (key == cur->key)
         {
             cur->val = val;
-            break;
+            pthread_mutex_unlock(_lock);
+            return;
         }
 		prev = cur;
 		cur = cur->next;
 	}
 
+    Node<K,T>* node = new Node<K,T>(key, val);
+    prev->next = node;
+    node->next = cur;
+    _length++;
     pthread_mutex_unlock(_lock);
 }
 
@@ -111,6 +111,7 @@ bool CoarseGrainedList<K,T>::remove(K key)
 
     Node<K,T>* prev = _head;
     Node<K,T>* cur = prev->next;
+
     while (cur != NULL)
     {
         if (key == cur->key)
@@ -204,6 +205,6 @@ std::string CoarseGrainedList<K,T>::name()
     return "CoarseGrained";
 }
 
-template class CoarseGrainedList<int, std::string>;
+template class CoarseGrainedList<int, int>;
 template class CoarseGrainedList<double, int>;
 template class CoarseGrainedList<long, float>;

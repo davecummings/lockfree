@@ -9,7 +9,7 @@ using namespace std;
 
 
 template<typename K, typename T, typename L, typename H>
-HashMap<K,T,L,H>::HashMap(int size)
+HashMap<K,T,L,H>::HashMap(int size) : List<K,T>()
 {
     array = new std::vector<L>(size);
 }

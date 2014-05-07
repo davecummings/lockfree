@@ -109,6 +109,7 @@ void LockFreeList<K,T>::insert(K key, T val)
 		{
 			rightNode->val = val;
 			delete n;
+			return;
 		}
 		else
 		{
@@ -251,8 +252,8 @@ void LockFreeList<K,T>::clear()
 {
 	Node<K,T>* node = getUnmarkedReference(_head);
 	Node<K,T>* tail = getUnmarkedReference(_tail);
-	_head = new Node<K,T>();
-	_tail = new Node<K,T>();
+	_head = new Node<K,T>(0,0);
+	_tail = new Node<K,T>(0,0);
 	_head->next = _tail;
 
 	while (node != tail) {
@@ -288,3 +289,5 @@ void LockFreeList<K,T>::printList()
 	std::cout << "]" << std::endl;
 
 }
+
+template class LockFreeList<int, int>;

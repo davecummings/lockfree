@@ -9,7 +9,7 @@
 
 
 template<typename K, typename T,  typename L = List<K,T>, typename H = std::hash<K> >
-class HashMap
+class HashMap : public List<K,T>
 {
 public:
     HashMap(int size);

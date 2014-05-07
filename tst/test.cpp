@@ -15,7 +15,7 @@
 #include "../src/fine_grained_list.h"
 #include "../src/lock_free_list.h"
 
-// #define DEBUG
+#define DEBUG
 
 #ifdef DEBUG
 #define print_debug_result print_result
@@ -25,7 +25,7 @@
 
 using namespace std;
 
-typedef long key;
+typedef int key;
 typedef int val;
 
 bool test_sanity(List<key, val>& list);
@@ -87,7 +87,7 @@ void run_test_loop(vector<List<key,val>*>& lists,
         val* vals = (val*)malloc(i * sizeof(val));
         key* keys = (key*)malloc(i * sizeof(key));
         for (int j = 0; j < i; j++) {
-            keys[i] = rand();
+            keys[j] = rand();
             vals[j] = rand();
         }
 
@@ -120,7 +120,7 @@ bool test_sanity(List<key,val>& list)
 
     #pragma omp parallel for
     for (int i = 0; i < iters; i++) {
-        elem_t x = list[i];
+        val x = list[i];
         if (x != i) {
             ostringstream message;
             message << "You suck! list[" << i << "] was " << x << ")";
