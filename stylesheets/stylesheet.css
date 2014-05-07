@@ -46,6 +46,10 @@ table {
 	border-spacing: 0;
 }
 
+b {
+  font-weight: 200%;
+}
+
 /* LAYOUT STYLES */
 body {
   font-size: 15px;
