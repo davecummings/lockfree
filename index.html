@@ -29,9 +29,9 @@
       <div class="inner clearfix">
         <section id="main-content">
           <h3>
-            It's a race!
+            HIHIHIHIHIHI
           </h3>
-          <p>When multiple threads are making concurrent modifications to a shared data structure, a typical strategy is to use a lock so that only one thread can modify the structure at a time. We’re exploring alternative thread-safe schemes: <em>fine-grained locks</em>, which lock only the most necessary parts of the structure; and <b>atomic memory operations</b>, which allow us to forego locks altogether. Though each of these approaches has its appeals and its drawbacks, <b>we have found lock-free structures to be sensationally faster under conditions of high contention.</b> And perhaps even more important than speed, <b>we’ve discovered lock-free structures to be more energy-efficient than their counterparts.</b></p>
+          <p>When multiple threads are making concurrent modifications to a shared data structure, a typical strategy is to use a lock so that only one thread can modify the structure at a time. We’re exploring alternative thread-safe schemes: <b>fine-grained locks</b>, which lock only the most necessary parts of the structure; and <b>atomic memory operations</b>, which allow us to forego locks altogether. Though each of these approaches has its appeals and its drawbacks, <b>we have found lock-free structures to be sensationally faster under conditions of high contention.</b> And perhaps even more important than speed, <b>we’ve discovered lock-free structures to be more energy-efficient than their counterparts.</b></p>
           <h3>Some preliminary data to tease you with</h3>
           <p>We're still tweaking our test cases, but take a look at some of our initial findings. These tests were all done on a <a href="http://www.everymac.com/systems/apple/macbook-air/specs/macbook-air-core-i7-1.7-11-mid-2013-specs.html">Mid-2013 MacBook Air</a> equipped with an <a href="http://ark.intel.com/products/75114/Intel-Core-i7-4650U-Processor-4M-Cache-up-to-3_30-GHz">Intel i7-4650U.</a> (In a few days we'll have data to show you from other machines too, including <a href="http://www.psc.edu/index.php/computing-resources/blacklight">Blacklight</a>, a 4096-core supercluster.</p>
           <img src="images/charts/1.png">
@@ -42,18 +42,27 @@
           <p>Here we start to get into some more interesting metrics. In a 10,000,000-iteration Jam-16 test, LockFree consumed almost 54x less electricity to perform the same task as FineGrained. We're excited to dig further into the astounding difference in efficiency.</p>
           <img src="images/charts/4.png">
           <p>This chart illustrates the comparative scaling of average instantaneous power on each of the MacBook's three main components of cache hierarchy: CPU, RAM, and disk. (Since the CPU consumes orders of magnitude more power than the other components, RAM and SSD consumption are charted on a complementary axis.) This graph is interesting because it shows the coincidence of increased DRAM-bound activity with the number of threads exceeding the number of execution contexts on the CPU. While this piece of data is interesting in and of itself, we're particularly excited about this level of subtlety that can be observed with the tools we built.</p> 
-          <h3>Motivation</h3>
-          <p>Although our implementation of lock-free linked lists with standard set operations proved to be very fast, it was not a useful data structure. Nobody would ever use a linked list in this manner. We wanted to make a data structure that could be used in real concurrent applications. First, we changed all our sets to tables, i.e. they now used key-value mappings for all the operations. Next, we used our linked-lists as a sub-structure in implementing HashTables that used our lists for chaining of colliding elements. A HashTable is an extremely important data-structure in many applications and algorithms, and our hope is that a lock-free HashTable proves to be of use in concurrent applications. It could, for example, be used as some sort of cache in an intensive parallel computation.</p>
-          <p>Memory management proved to be our most challenging problem, and one we did not expect to deal with. In the papers we read, there was no good solution to the problem of freeing memory in lock-free linked lists. If our language was garbage collected, this would not be an issue. However, C++ is not garbage collected, so we would need some sort of scheme for freeing nodes that had been deleted from the list. Unfortunately, any simple scheme introduced race-conditions. A scheme using reference-counting is feasible, but would require a Double Compare-and-Swap unavailable on any machine. The only real solution seems to involve a gargantuan amount of extra code that we simply don't have the time for, even if we had known it would be a problem from the start.</p>
+          <h3>A practical application</h3>
+          <p>Although our implementation of lock-free linked lists with standard set operations proved to be very fast, there are few pricatical applications for thread-safe, sorted linked lists. We wanted to make a data structure that could be used in real concurrent applications. First, we changed all our sets to maps, i.e. they now used key-value mappings for all the operations. Next, we used our linked-lists as a sub-structure in implementing HashTables that used our lists for chaining of colliding elements. A Hashtable is an extremely important data structure in many applications and algorithms, and we expect that a lock-free Hashtable proves to be of use in concurrent applications. It could, for example, be used as some sort of cache in an intensive parallel computation.</p>
+          <h3>Methodology</h3>
+          <p>We've selected and tweaked tests to simulate the extreme situations 
         </section>
 
         <aside id="sidebar">
           <p>An almost-finished project by <a href="http://github.com/davidhcummings">Dave Cummings</a> and <a href="http://github.com/sbly">Stephen Bly</a></p>
+          <p>See more cool projects being developed for CMU's <a href="http://15418.courses.cs.cmu.edu/spring2014/competition">Spring 2014 Paralellism Competition</a></p>
 
           <a href="https://github.com/davidhcummings/lockfree/zipball/master" class="button">
             <small>Download</small>
             .zip file
           </a>
+          <div id="contents">
+            <ul>
+              <li>
+                <p>blah</p>
+              </li>
+            </ul>
+          </div>
 
           <p id="credit">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the Architect theme by <a href="https://twitter.com/jasonlong">Jason Long</a>.</p>
         </aside>
