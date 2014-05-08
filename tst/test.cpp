@@ -52,6 +52,7 @@ int main()
     lists.push_back(new CoarseGrainedList<key, val>());
     lists.push_back(new FineGrainedList<key, val>());
     lists.push_back(new LockFreeList<key, val>());
+    lists.push_back(new HashMap<key, val, CoarseGrainedList<key,val>
 
     bool isSane = true;
     for (unsigned int i = 0; i < lists.size(); i++) {
