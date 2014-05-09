@@ -107,6 +107,10 @@ header h2 {
   bottom: 0px;
 }
 
+.code-str {
+  color: red;
+}
+
 .inner {
   position: relative;
   width: 940px;

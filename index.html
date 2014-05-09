@@ -28,9 +28,7 @@
     <div id="content-wrapper">
       <div class="inner clearfix">
         <section id="main-content">
-          <h3>
-            HIHIHIHIHIHI
-          </h3>
+          <h3> It's a race! </h3>
           <p>When multiple threads are making concurrent modifications to a shared data structure, a typical strategy is to use a lock so that only one thread can modify the structure at a time. We’re exploring alternative thread-safe schemes: <b>fine-grained locks</b>, which lock only the most necessary parts of the structure; and <b>atomic memory operations</b>, which allow us to forego locks altogether. Though each of these approaches has its appeals and its drawbacks, <b>we have found lock-free structures to be sensationally faster under conditions of high contention.</b> And perhaps even more important than speed, <b>we’ve discovered lock-free structures to be more energy-efficient than their counterparts.</b></p>
           <h3>Some preliminary data to tease you with</h3>
           <p>We're still tweaking our test cases, but take a look at some of our initial findings. These tests were all done on a <a href="http://www.everymac.com/systems/apple/macbook-air/specs/macbook-air-core-i7-1.7-11-mid-2013-specs.html">Mid-2013 MacBook Air</a> equipped with an <a href="http://ark.intel.com/products/75114/Intel-Core-i7-4650U-Processor-4M-Cache-up-to-3_30-GHz">Intel i7-4650U.</a> (In a few days we'll have data to show you from other machines too, including <a href="http://www.psc.edu/index.php/computing-resources/blacklight">Blacklight</a>, a 4096-core supercluster.</p>
@@ -45,7 +43,23 @@
           <h3>A practical application</h3>
           <p>Although our implementation of lock-free linked lists with standard set operations proved to be very fast, there are few pricatical applications for thread-safe, sorted linked lists. We wanted to make a data structure that could be used in real concurrent applications. First, we changed all our sets to maps, i.e. they now used key-value mappings for all the operations. Next, we used our linked-lists as a sub-structure in implementing HashTables that used our lists for chaining of colliding elements. A Hashtable is an extremely important data structure in many applications and algorithms, and we expect that a lock-free Hashtable proves to be of use in concurrent applications. It could, for example, be used as some sort of cache in an intensive parallel computation.</p>
           <h3>Methodology</h3>
-          <p>We've selected and tweaked tests to simulate the extreme situations 
+          <h4>Testing</h4>
+          <p>We designed tests specifically to test extreme situations and exaggerate the advantages and disadvantages of each list implementation.</p>
+          <h4>Monitoring</h4>
+          <p>For monitoring elapsed time, we used <a href="https://github.com/davidhcummings/lockfree/blob/master/tst/cycle_timer.h">CycleTimer</a>, which was provided by the 418 course staff for multiple assignments. CycleTimer directly counts the number of number of CPU ticks to get as granular reporting of time as possible. CycleTimer executes unique logic for each system. For example, for x86-64, CycleTimer makes an inline assembly call to read the <a href="http://en.wikipedia.org/wiki/Time_Stamp_Counter"><code>tsc</code> register</a>.</p>
+          <img src="images/istat.png" align="right">
+          <p>To monitor power, we had to develop our own tools. The result is not only specific to OS X but actually exclusive to MacBook Airs (MacBooks Air?) shipped since June 2013.</p>
+          <p>Every Intel-based Mac uses <a href="http://en.wikipedia.org/wiki/System_Management_Controller">System Management Controller</a> to manage auxillary internal hardware components, primarily to adjust fan speeds in reaction to changes in intnernal temperature. Because the operating system is dependant on certain bits of information maintained by SMC (like knowing to shut down if the CPU overheats) the subsystem can be queried by the kernal using <a href="https://developer.apple.com/library/mac/documentation/devicedrivers/conceptual/IOKitFundamentals/Introduction/Introduction.html">IOKit</a>, Apple's API for writing device drivers. Apple has absolutely zero documentation about interfacing with SMC, and with good reason: you can set values just as easily as you can query them, so in theory you could, say, up the voltage on your CPU and completely fry the system.</p>
+          <p>A developer known only as <em>devnull</em> created an interface for making read-only calls to SMC, and we've <a href="https://github.com/davidhcummings/lockfree/blob/master/tst/smc.cpp">modified it</a> to query the power sensors on a MacBookAir6,1. Every model of Mac has a different assortment of sensors and (perhaps to add security through obscurity) each sensor is identified by a four-character key that's unique to each model. The mappings from keys to sensors aren't published anywhere; developers have had to feel around to find them and new keys are still being discovered. The folks at <a href="http://bjango.com">Bjango</a> developed <a href="http://bjango.com/mac/istatmenus/">iStat Menus</a> (pictured right) and hard-coded known SMC keys. By decompiling the app, we were able to exctract the keys corresponding to power sensors for our MacBook Air test machine. Some further digging into the decompiled source revealed that the recent MacBook Air is the only Mac for which the keys are known for the power sensors on the SSD and DRAM. (The SMC keys for the CPU power sensor are known for most recent Macs.)</p>
+<pre>
+function +[MacBookAir6_1 supportedSensors] {
+  var_64 = [[NSMutableArray alloc] init];
+  xmm0 = intrinsic_xorps(xmm0, xmm0, *objc_cls_ref_NSNumber, *0x1001bac48);
+  r12 = [__got__objc_msgSend() retain];
+  xmm0 = intrinsic_movsd(xmm0, *0x100133070, *objc_cls_ref_NSNumber, *0x1001bac48);
+  r13 = [__got__objc_msgSend() retain];
+  rbx = [var_64 dictionaryWithObjectsAndKeys:<span class="code-str">@"PSDC"</span>, <span class="code-str">@"key"</span>, <span class="code-str">@"SSD"</span>, <span class="code-str">@"name"</span>];
+</pre>
         </section>
 
         <aside id="sidebar">
