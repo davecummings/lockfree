@@ -16,7 +16,7 @@ private:
 
 public:
 	CoarseGrainedList();
-	virtual void insert(K key, T val);
+	virtual bool insert(K key, T val);
 	virtual bool remove(K key);
 	virtual bool contains(K key);
 	virtual T operator[](K key);

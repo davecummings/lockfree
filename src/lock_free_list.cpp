@@ -96,7 +96,7 @@ void LockFreeList<K,T>::search(K key,
 }
 
 template<typename K, typename T>
-void LockFreeList<K,T>::insert(K key, T val)
+bool LockFreeList<K,T>::insert(K key, T val)
 {
 	Node<K,T>* n = new Node<K,T>(key, val);
 	Node<K,T>* leftNode;
@@ -109,13 +109,13 @@ void LockFreeList<K,T>::insert(K key, T val)
 		{
 			rightNode->val = val;
 			delete n;
-			return;
+			return false;
 		}
 		else
 		{
 			n->next = rightNode;
 			if (__sync_bool_compare_and_swap(&leftNode->next, rightNode, n))
-				return;
+				return true;
 		}
 	}
 }

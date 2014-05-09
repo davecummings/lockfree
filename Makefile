@@ -1,6 +1,6 @@
 CC=g++
-CFLAGS=-std=c++11 -Wall -Werror -o test
-MAC_SOURCES=src/*.cpp tst/smc.cpp tst/monitor.cpp tst/test_device.cpp
+CFLAGS=-std=gnu++11 -Wall -Werror -o test
+MAC_SOURCES=src/*.cpp tst/test_hashmap.cpp
 LINUX_SOURCES=src/*.cpp tst/monitor.cpp tst/test.cpp
 
 all:

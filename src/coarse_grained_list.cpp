@@ -34,7 +34,7 @@ CoarseGrainedList<K,T>::~CoarseGrainedList()
 }
 
 template <typename K, typename T>
-void CoarseGrainedList<K,T>::insert(K key, T val)
+bool CoarseGrainedList<K,T>::insert(K key, T val)
 {
 	pthread_mutex_lock(_lock);
 
@@ -45,7 +45,7 @@ void CoarseGrainedList<K,T>::insert(K key, T val)
 		_head = node;
         _length++;
         pthread_mutex_unlock(_lock);
-        return;
+        return true;
     }
 
 	if (key < _head->key)
@@ -55,14 +55,14 @@ void CoarseGrainedList<K,T>::insert(K key, T val)
 		_head = node;
         _length++;
         pthread_mutex_unlock(_lock);
-        return;
+        return true;
 	}
 
     if (key == _head->key)
     {
         _head->val = val;
         pthread_mutex_unlock(_lock);
-        return;
+        return false;
     }
 
 	Node<K,T>* cur = _head->next;
@@ -75,7 +75,7 @@ void CoarseGrainedList<K,T>::insert(K key, T val)
         {
             cur->val = val;
             pthread_mutex_unlock(_lock);
-            return;
+            return false;
         }
 		prev = cur;
 		cur = cur->next;
@@ -86,6 +86,7 @@ void CoarseGrainedList<K,T>::insert(K key, T val)
     node->next = cur;
     _length++;
     pthread_mutex_unlock(_lock);
+    return true;
 }
 
 template<typename K, typename T>

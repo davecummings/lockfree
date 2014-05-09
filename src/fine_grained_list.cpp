@@ -52,7 +52,7 @@ FineGrainedList<K,T>::~FineGrainedList()
 }
 
 template<typename K, typename T>
-void FineGrainedList<K,T>::insert(K key, T val)
+bool FineGrainedList<K,T>::insert(K key, T val)
 {
 	pthread_mutex_lock(_lock);
 
@@ -62,7 +62,7 @@ void FineGrainedList<K,T>::insert(K key, T val)
 		node->next = _head;
 		_head = node;
 		pthread_mutex_unlock(_lock);
-		return;
+		return true;
 	}
 
 	pthread_mutex_lock(_head->lock);
@@ -76,10 +76,10 @@ void FineGrainedList<K,T>::insert(K key, T val)
 		node->next = NULL;
 		curr->next = node;
 		pthread_mutex_unlock(curr->lock);
-		return;
+		return true;
 	}
-	else
-		pthread_mutex_lock(next->lock);
+
+	pthread_mutex_lock(next->lock);
 
 	while (key > next->key)
 	{
@@ -92,17 +92,17 @@ void FineGrainedList<K,T>::insert(K key, T val)
 			node->next = NULL;
 			curr->next = node;
 			pthread_mutex_unlock(curr->lock);
-			return;
+			return true;
 		}
-		else
-			pthread_mutex_lock(next->lock);
+
+		pthread_mutex_lock(next->lock);
 	}
 
 	if (key == next->key) {
 		next->val = val;
 		pthread_mutex_unlock(curr->lock);
 		pthread_mutex_unlock(next->lock);
-		return;
+		return false;
 	}
 	else { // val < next->val
 		FineGrainedNode<K,T>* node = new FineGrainedNode<K,T>(key, val);
@@ -110,7 +110,7 @@ void FineGrainedList<K,T>::insert(K key, T val)
 		curr->next = node;
 		pthread_mutex_unlock(curr->lock);
 		pthread_mutex_unlock(next->lock);
-		return;
+		return true;
 	}
 }
 
