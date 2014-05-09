@@ -60,6 +60,7 @@ function +[MacBookAir6_1 supportedSensors] {
   r13 = [__got__objc_msgSend() retain];
   rbx = [var_64 dictionaryWithObjectsAndKeys:<span class="code-str">@"PSDC"</span>, <span class="code-str">@"key"</span>, <span class="code-str">@"SSD"</span>, <span class="code-str">@"name"</span>];
 </pre>
+          <p>We packaged functions for getting system time and power usage statistics into a singleton class called <a href="https://github.com/davidhcummings/lockfree/blob/master/tst/monitor.cpp">Monitor</a>. When running with the monitor, a few things are different from our standard test suite. First, we use pthreads instead of OpenMP, since Clang does not natively support OpenMP. We divide a test's input array into evenly-sized contiguous chunks, which closer resembles OpenMP <code>static</code> scheduling rather than the default <code>dynamic</code>. Additionally, the act of observing can interfere with the tests themselves, since th monitoring tasks run in a thread that runs alongside the worker threads. We found evidence of this interference, since on average every single test ran slower with power monitoring off than with it on; however, the difference in speed was typically less than 1% and execution time was always within the standard deviation of the length of corresponding unmonitored tests.</p>
         </section>
 
         <aside id="sidebar">
