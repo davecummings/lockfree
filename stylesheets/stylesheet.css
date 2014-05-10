@@ -97,18 +97,48 @@ header h2 {
   letter-spacing: 0;
 }
 
-#contents {
+#blurb {
+  border-radius: 5pt;
+  background-color: white;
+  padding-left: 10pt;
+  padding-top: 10pt;
+  padding-right: 10pt;
+  padding-bottom: 1pt;
+  margin-bottom: 10pt;
+  font-size: 10pt;
+}
+
+#contentsDiv {
   position: fixed;
-  padding-bottom: 200px;
+}
+
+#contentsUL li {
+  list-style-type: none;
+  font-size: 11pt;
+  font-weight: bold;
+}
+
+#contentsUL li small {
+  margin-left: 5pt;
+  font-weight: normal;
 }
 
 #credit {
   position: absolute;
   bottom: 0px;
+  margin-top: 20%;
 }
 
 .code-str {
   color: red;
+}
+
+.code-key {
+  color: purple;
+}
+
+.code-val {
+  color: blue;
 }
 
 .inner {
@@ -255,7 +285,6 @@ form {
 } 
 
 #main-content h1:before {
-  content: "/";
   color: #9ddcff;
   padding-right: 0.3em;
   margin-left: -0.9em;
@@ -269,7 +298,6 @@ form {
   color: #474747;
 } 
 #main-content h2:before {
-  content: "//";
   color: #9ddcff;
   padding-right: 0.3em;
   margin-left: -1.5em;
@@ -459,6 +487,9 @@ footer a:hover {
     min-height: 0;
   }
   aside#sidebar a.button {
+    display: none;
+  }
+  #contentsDiv {
     display: none;
   }
   #main-content h1:before,

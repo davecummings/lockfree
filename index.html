@@ -4,10 +4,11 @@
     <meta charset='utf-8'>
     <meta http-equiv="X-UA-Compatible" content="chrome=1">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-    <link href='https://fonts.googleapis.com/css?family=Architects+Daughter' rel='stylesheet' type='text/css'>
     <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen" />
     <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen" />
     <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print" />
+    
+    <script type="text/javascript" src="javascripts/jquery-2.1.1.min.js"></script>
 
     <!--[if lt IE 9]>
     <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
@@ -28,55 +29,110 @@
     <div id="content-wrapper">
       <div class="inner clearfix">
         <section id="main-content">
-          <h3> It's a race! </h3>
-          <p>When multiple threads are making concurrent modifications to a shared data structure, a typical strategy is to use a lock so that only one thread can modify the structure at a time. We’re exploring alternative thread-safe schemes: <b>fine-grained locks</b>, which lock only the most necessary parts of the structure; and <b>atomic memory operations</b>, which allow us to forego locks altogether. Though each of these approaches has its appeals and its drawbacks, <b>we have found lock-free structures to be sensationally faster under conditions of high contention.</b> And perhaps even more important than speed, <b>we’ve discovered lock-free structures to be more energy-efficient than their counterparts.</b></p>
-          <h3>Some preliminary data to tease you with</h3>
-          <p>We're still tweaking our test cases, but take a look at some of our initial findings. These tests were all done on a <a href="http://www.everymac.com/systems/apple/macbook-air/specs/macbook-air-core-i7-1.7-11-mid-2013-specs.html">Mid-2013 MacBook Air</a> equipped with an <a href="http://ark.intel.com/products/75114/Intel-Core-i7-4650U-Processor-4M-Cache-up-to-3_30-GHz">Intel i7-4650U.</a> (In a few days we'll have data to show you from other machines too, including <a href="http://www.psc.edu/index.php/computing-resources/blacklight">Blacklight</a>, a 4096-core supercluster.</p>
-          <img src="images/charts/1.png">
-          <p>This first chart shows each list's performance during a 100,000-iteration Size test. In Size, each list inserts the same <em>n</em> random elements without removing anyting from the list. This test isolates the insertion/traversal logic and does not invoke any memory management. Whereas LockFree and FineGrained perform steadily better with each thread count doubling, CoarseGrained's performance stays constant and even ticks up slightly at the highest thread count.</p>
-          <img src="images/charts/2.png">
-          <p>This next chart shows each list's performance during a 10,000,000-iteration Jam-128 test. In Jam-<em>k</em>, the list never extends beyond <em>k</em> elements; after that length is reached, every time a thread finishes inserting a node, it then goes back and deletes the node it just inserted. LockFree scales extremely well, especially compared to the other lists. It's worth observing that the gold medal in this test actually goes to CoarseGrained list for its single-threaded performance. In a single-threaded context, having only one lightweight lock to manage makes the code only a few loads and stores of more work compared to a typical thread-unsafe insertion pattern. Contrast that with FineGrained, which is so burdened by the overhead of locking and unlocking that its performance suffers at both low and higher thread counts. At high thread counts, LockFree completely blows away the competition.</p>
-          <img src="images/charts/3.png">
-          <p>Here we start to get into some more interesting metrics. In a 10,000,000-iteration Jam-16 test, LockFree consumed almost 54x less electricity to perform the same task as FineGrained. We're excited to dig further into the astounding difference in efficiency.</p>
-          <img src="images/charts/4.png">
-          <p>This chart illustrates the comparative scaling of average instantaneous power on each of the MacBook's three main components of cache hierarchy: CPU, RAM, and disk. (Since the CPU consumes orders of magnitude more power than the other components, RAM and SSD consumption are charted on a complementary axis.) This graph is interesting because it shows the coincidence of increased DRAM-bound activity with the number of threads exceeding the number of execution contexts on the CPU. While this piece of data is interesting in and of itself, we're particularly excited about this level of subtlety that can be observed with the tools we built.</p> 
-          <h3>A practical application</h3>
-          <p>Although our implementation of lock-free linked lists with standard set operations proved to be very fast, there are few pricatical applications for thread-safe, sorted linked lists. We wanted to make a data structure that could be used in real concurrent applications. First, we changed all our sets to maps, i.e. they now used key-value mappings for all the operations. Next, we used our linked-lists as a sub-structure in implementing HashTables that used our lists for chaining of colliding elements. A Hashtable is an extremely important data structure in many applications and algorithms, and we expect that a lock-free Hashtable proves to be of use in concurrent applications. It could, for example, be used as some sort of cache in an intensive parallel computation.</p>
-          <h3>Methodology</h3>
-          <h4>Testing</h4>
-          <p>We designed tests specifically to test extreme situations and exaggerate the advantages and disadvantages of each list implementation.</p>
-          <h4>Monitoring</h4>
-          <p>For monitoring elapsed time, we used <a href="https://github.com/davidhcummings/lockfree/blob/master/tst/cycle_timer.h">CycleTimer</a>, which was provided by the 418 course staff for multiple assignments. CycleTimer directly counts the number of number of CPU ticks to get as granular reporting of time as possible. CycleTimer executes unique logic for each system. For example, for x86-64, CycleTimer makes an inline assembly call to read the <a href="http://en.wikipedia.org/wiki/Time_Stamp_Counter"><code>tsc</code> register</a>.</p>
-          <img src="images/istat.png" align="right">
-          <p>To monitor power, we had to develop our own tools. The result is not only specific to OS X but actually exclusive to MacBook Airs (MacBooks Air?) shipped since June 2013.</p>
-          <p>Every Intel-based Mac uses <a href="http://en.wikipedia.org/wiki/System_Management_Controller">System Management Controller</a> to manage auxillary internal hardware components, primarily to adjust fan speeds in reaction to changes in intnernal temperature. Because the operating system is dependant on certain bits of information maintained by SMC (like knowing to shut down if the CPU overheats) the subsystem can be queried by the kernal using <a href="https://developer.apple.com/library/mac/documentation/devicedrivers/conceptual/IOKitFundamentals/Introduction/Introduction.html">IOKit</a>, Apple's API for writing device drivers. Apple has absolutely zero documentation about interfacing with SMC, and with good reason: you can set values just as easily as you can query them, so in theory you could, say, up the voltage on your CPU and completely fry the system.</p>
-          <p>A developer known only as <em>devnull</em> created an interface for making read-only calls to SMC, and we've <a href="https://github.com/davidhcummings/lockfree/blob/master/tst/smc.cpp">modified it</a> to query the power sensors on a MacBookAir6,1. Every model of Mac has a different assortment of sensors and (perhaps to add security through obscurity) each sensor is identified by a four-character key that's unique to each model. The mappings from keys to sensors aren't published anywhere; developers have had to feel around to find them and new keys are still being discovered. The folks at <a href="http://bjango.com">Bjango</a> developed <a href="http://bjango.com/mac/istatmenus/">iStat Menus</a> (pictured right) and hard-coded known SMC keys. By decompiling the app, we were able to exctract the keys corresponding to power sensors for our MacBook Air test machine. Some further digging into the decompiled source revealed that the recent MacBook Air is the only Mac for which the keys are known for the power sensors on the SSD and DRAM. (The SMC keys for the CPU power sensor are known for most recent Macs.)</p>
+          <div id="blurb">
+            <p>A project by <a href="http://github.com/davidhcummings">Dave Cummings</a> and <a href="http://github.com/sbly">Stephen Bly</a>, and a finalist in CMU's Spring 2014 Parallelism Competition. Check out the other <a href="http://15418.courses.cs.cmu.edu/spring2014/competition">awesome submissions</a>!</p>
+          </div>
+          <h2> It's a race! </h2>
+          <div class="section">
+	          <p>When multiple threads are making concurrent modifications to a shared data structure, a typical strategy is to use a lock so that only one thread can modify the structure at a time. We’re exploring alternative thread-safe schemes: <b>fine-grained locks</b>, which lock only the most necessary parts of the structure; and <b>atomic memory operations</b>, which allow us to forego locks altogether. Though each of these approaches has its appeals and its drawbacks, <b>we have found lock-free structures to be sensationally faster under conditions of high contention.</b> And perhaps even more important than speed, <b>we’ve discovered lock-free structures to be more energy-efficient than their counterparts.</b></p>
+          </div>
+          <h2>Background</h2>
+          <div class="section">
+      			<p>The most fundamental element to prevent concurrent threads operating on the same memory from scrambling one another's data is to use a lock. The status of the lock gets checked and then modified whenever a thread wants to access or change the protected data, and then unlocked upon completion. The terms "coarse-grained" and "fine-grained" refer to general strategies of using locks: whether to have very few locks limiting access to large portions of memory or to have many locks that each limit access to a small portion of memory.</p>
+      			<h4>Coarse-Grained-Locking Linked Lists</h4>
+      			<div class="subsubsection">
+      				<p></p>
+      			</div>
+      			<h4>Fine-Grained-Locking Linked Lists</h4>
+      			<div class="subsubsection">
+      				<p></p>
+      			</div>
+      			<h4>Lock-Free Linked Lists</h4>
+      			<div class="subsubsection">
+      				<p></p>
+      			</div>
+      			<h3>Prior Work</h3>
+      			<div class="subsection">
+      			  <p></p>
+      			</div>
+          </div>
+          <h2>Methodology</h2>
+          <div class="section">
+            <p>In comparing the performance of different thread-safe list implementations, it was important to us that using the lists was practical from the perspective of an engineer and not just from an efficiency standpoint. It was important to us that the lists inherit from a common interface that declared what operations could be performed, and that developers (ourselves included) could call the same function on any list implementation and expect the same result. It was also important that the lists support generics, without which our lists have basically no real-world utility.</p>
 <pre>
-function +[MacBookAir6_1 supportedSensors] {
+  <code>...</code>
+  
+  vector&lt;List&lt;elem_t&gt;*&gt; lists;
+  lists.push_back(<span class="code-key">new</span> CoarseGrainedList&lt;elem_t&gt;());
+  lists.push_back(<span class="code-key">new</span> FineGrainedList&lt;elem_t&gt;());
+  lists.push_back(<span class="code-key">new</span> LockFreeList&lt;elem_t&gt;());
+  
+  <span class="code-key">bool</span> isSane = <span class="code-key">true</span>;
+  for (<span class="code-key">unsigned int</span> i = <span class="code-val">0</span>; i &lt; lists.size(); i++) {
+      isSane &amp;= test_sanity(*lists[i]);
+  }
+  <span class="code-key">if</span> (isSane) {
+      cout &lt;&lt; <span class="code-str">"Sanity tests passed!"</span>;
+  } <span class="code-key">else</span> {
+      cout &lt;&lt; <span class="code-str">"Sanity tests failed! #define DEBUGGING to run in debug mode."</span>;
+  }
+  
+  <code>...</code>
+  
+}
+  
+<span class="code-key">bool</span> test_sanity(List&lt;elem_t&gt;&amp; list)
+{
+
+  <code>...</code>
+  
+}
+            </pre>
+            <p></p>
+	          <h3>Testing</h3>
+	          <div class="subsection">
+		          <p>We designed tests specifically to test extreme situations and exaggerate the advantages and disadvantages of each list implementation. The final test suite breaks down into three categories:</p>
+		            <h4>Sanity tests</h4>
+		            <p class="subsubsection">The quickest to run and the first to fail in the event of a glaring implementation mistake. Sanity tests were particularly helpful as we gained familiarity with inheritance and polymorphism in C++. By having all the thread-safe list implementations inherit from the same "interface" we could simply maintain a collection of lists and pass them to the same test functions. In addition to cleanliness and adhering to good software engineering practices, this meant that any change to a test was automatically reflected for each of the list implementations with which it was run.</p>p>
+	          </div>
+	          <h3>Environments</h3>
+	          <div class="subsection">
+	            <p>Our primary test machine was a mid-2013 MacBook Air ("MacBookAir6,1") equipped with …. We also ran tests on remote machines, specifically a … workstation and a 32-CPU instance on Pittsburgh Supercomputing Center's Blacklight. We later allude to results from these tests, but over the course of the project we found ourselves less and less reliant on remote machines and more immersed in tests run on the Mac. The big advantage was being able to deploy instantly, not having to wait in a queue to run the compiled code, and not having to share precious CPU resources with the rest of the School of Computer Science. As we progressed, our software became more specialized for OS X, and so running new tests on these remote machines became impossible.</p>
+	          </div>
+	          <h3>Monitoring</h3>
+	          <div class="subsection">
+		          <p>For monitoring elapsed time, we used <a href="https://github.com/davidhcummings/lockfree/blob/master/tst/cycle_timer.h">CycleTimer</a>, which was provided by the 418 course staff for multiple assignments. CycleTimer directly counts the number of number of CPU ticks to get as granular reporting of time as possible. CycleTimer executes unique logic for each system. For example, for x86-64, CycleTimer makes an inline assembly call to read the <a href="http://en.wikipedia.org/wiki/Time_Stamp_Counter"><code>tsc</code> register</a>.</p>
+		          <img src="images/istat.png" align="right">
+		          <p>To monitor power, we had to develop our own tools. The result is not only specific to OS X but actually exclusive to MacBook Airs (MacBooks Air?) shipped since June 2013.</p>
+		          <p>Every Intel-based Mac uses <a href="http://en.wikipedia.org/wiki/System_Management_Controller">System Management Controller</a> to manage auxiliary internal hardware components, primarily to adjust fan speeds in reaction to changes in intnernal temperature. Because the operating system is dependent on certain bits of information maintained by SMC (like knowing to shut down if the CPU overheats) the subsystem can be queried by the kernel using <a href="https://developer.apple.com/library/mac/documentation/devicedrivers/conceptual/IOKitFundamentals/Introduction/Introduction.html">IOKit</a>, Apple's API for writing device drivers. Apple has absolutely zero documentation about interfacing with SMC, and with good reason: you can set values just as easily as you can query them, so in theory you could, say, up the voltage on your CPU and completely fry the system.</p>
+		          <p>A developer known only as <em>devnull</em> created an interface for making read-only calls to SMC, and we've <a href="https://github.com/davidhcummings/lockfree/blob/master/tst/smc.cpp">modified it</a> to query the power sensors on a MacBookAir6,1. Every model of Mac has a different assortment of sensors and (perhaps to add security through obscurity) each sensor is identified by a four-character key that's unique to each model. The mappings from keys to sensors aren't published anywhere; developers have had to feel around to find them and new keys are still being discovered. The folks at <a href="http://bjango.com">Bjango</a> developed <a href="http://bjango.com/mac/istatmenus/">iStat Menus</a> (pictured right) and hard-coded known SMC keys. By decompiling the app, we were able to extract the keys corresponding to power sensors for our MacBook Air test machine. Some further digging into the decompiled source revealed that the recent MacBook Air is the only Mac for which the keys are known for the power sensors on the SSD and DRAM. (The SMC keys for the CPU power sensor are known for most recent Macs.)</p>
+<pre>function +[MacBookAir6_1 supportedSensors] {
   var_64 = [[NSMutableArray alloc] init];
   xmm0 = intrinsic_xorps(xmm0, xmm0, *objc_cls_ref_NSNumber, *0x1001bac48);
   r12 = [__got__objc_msgSend() retain];
   xmm0 = intrinsic_movsd(xmm0, *0x100133070, *objc_cls_ref_NSNumber, *0x1001bac48);
   r13 = [__got__objc_msgSend() retain];
-  rbx = [var_64 dictionaryWithObjectsAndKeys:<span class="code-str">@"PSDC"</span>, <span class="code-str">@"key"</span>, <span class="code-str">@"SSD"</span>, <span class="code-str">@"name"</span>];
-</pre>
-          <p>We packaged functions for getting system time and power usage statistics into a singleton class called <a href="https://github.com/davidhcummings/lockfree/blob/master/tst/monitor.cpp">Monitor</a>. When running with the monitor, a few things are different from our standard test suite. First, we use pthreads instead of OpenMP, since Clang does not natively support OpenMP. We divide a test's input array into evenly-sized contiguous chunks, which closer resembles OpenMP <code>static</code> scheduling rather than the default <code>dynamic</code>. Additionally, the act of observing can interfere with the tests themselves, since the monitoring tasks run in a thread that runs alongside the worker threads. We found evidence of this interference, since on average every single test ran slower with power monitoring off than with it on; however, the difference in speed was typically less than 1% and execution time was always within the standard deviation of the length of corresponding unmonitored tests.</p>
-          <p>An important caveat: since Apple offers no documentation on SMC, we don't have a reputable source promising validity of what it reports. We found that when the CPU is running at peak, the reading from the power sensor reported seems to change only once every 1.38 seconds, even though the monitoring thread can poll the SMC at a granularity as fine as 16 milliseconds. At peak, these changes are slight, often by fractions of watts. It could well be that inside that 1.38-second interval SMC will only adjust voltage and current when the workload changes drastically, and we have some data to suggest SMC might have a much faster reaction time: when we inserted the occasional <code>nanosleep</code> into our code, we sometimes saw changes in wattage as frequent as the SMC was polled. And while the SMC could be continuously adjusting wattage and only reporting the change every 1.38 seconds, it's also possible that during peak, when workloads stay consistent, the SMC keeps the CPU power at about the same level.</p>
+  rbx = [var_64 dictionaryWithObjectsAndKeys:<span class="code-str">@"PSDC"</span>, <span class="code-str">@"key"</span>, <span class="code-str">@"SSD"</span>, <span class="code-str">@"name"</span>];</pre>
+	            <p>We packaged functions for getting system time and power usage statistics into a singleton class called <a href="https://github.com/davidhcummings/lockfree/blob/master/tst/monitor.cpp">Monitor</a>. When running with the monitor, a few things are different from our standard test suite. First, we use pthreads instead of OpenMP, since Clang does not natively support OpenMP. We divide a test's input array into evenly-sized contiguous chunks, which closer resembles OpenMP <code>static</code> scheduling rather than the default <code>dynamic</code>. Additionally, the act of observing can interfere with the tests themselves, since the monitoring tasks run in a thread that runs alongside the worker threads. We found evidence of this interference, since on average every single test ran slower with power monitoring off than with it on; however, the difference in speed was typically less than 1% and execution time was always within the standard deviation of the length of corresponding unmonitored tests.</p>
+	            <p>An important caveat: since Apple offers no documentation on SMC, we don't have a reputable source promising validity of what it reports. We found that when the CPU is running at peak, the reading from the power sensor reported seems to change only once every 1.38 seconds, even though the monitoring thread can poll the SMC at a granularity as fine as 16 milliseconds. At peak, these changes are slight, often by fractions of watts. It could well be that inside that 1.38-second interval SMC will only adjust voltage and current when the workload changes drastically, and we have some data to suggest SMC might have a much faster reaction time: when we inserted the occasional <code>nanosleep</code> into our code, we sometimes saw changes in wattage as frequent as the SMC was polled. And while the SMC could be continuously adjusting wattage and only reporting the change every 1.38 seconds, it's also possible that during peak, when workloads stay consistent, the SMC keeps the CPU power at about the same level.</p>
+            </div>
+          </div>
+          <h2>Results</h2>
+          <div class="section">
+            <p></p>
+          </div>
+          <h2>Discussion</h2>
+          <div class="section">
+            <h3>Future Work</h3>
+            <div class="subsection">
+              <p></p>
+            </div>
+          </div>
         </section>
 
         <aside id="sidebar">
-          <p>An almost-finished project by <a href="http://github.com/davidhcummings">Dave Cummings</a> and <a href="http://github.com/sbly">Stephen Bly</a></p>
-          <p>See more cool projects being developed for CMU's <a href="http://15418.courses.cs.cmu.edu/spring2014/competition">Spring 2014 Paralellism Competition</a></p>
-
-          <a href="https://github.com/davidhcummings/lockfree/zipball/master" class="button">
-            <small>Download</small>
-            .zip file
-          </a>
-          <div id="contents">
-            <ul>
-              <li>
-                <p>blah</p>
-              </li>
+          <div id="contentsDiv">
+            <ul id="contentsUL">
             </ul>
           </div>
 
@@ -85,6 +141,6 @@ function +[MacBookAir6_1 supportedSensors] {
       </div>
     </div>
 
-  
+    <script type="text/javascript" src="javascripts/main.js"></script>
   </body>
 </html>
