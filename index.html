@@ -39,23 +39,8 @@
           <h2>Background</h2>
           <div class="section">
       			<p>The most fundamental element to prevent concurrent threads operating on the same memory from scrambling one another's data is to use a lock. The status of the lock gets checked and then modified whenever a thread wants to access or change the protected data, and then unlocked upon completion. The terms "coarse-grained" and "fine-grained" refer to general strategies of using locks: whether to have very few locks limiting access to large portions of memory or to have many locks that each limit access to a small portion of memory.</p>
-      			<h4>Coarse-Grained-Locking Linked Lists</h4>
-      			<div class="subsubsection">
-      				<p></p>
-      			</div>
-      			<h4>Fine-Grained-Locking Linked Lists</h4>
-      			<div class="subsubsection">
-      				<p></p>
-      			</div>
-      			<h4>Lock-Free Linked Lists</h4>
-      			<div class="subsubsection">
-      				<p></p>
-      			</div>
-      			<h3>Prior Work</h3>
-      			<div class="subsection">
-      			  <p></p>
-      			</div>
-          </div>
+      			<p>We began our investigation of lock-free linked lists by reading the papers recommended in the class slides on lock-free data structures. We read papers by <a href="http://www.research.ibm.com/people/m/michael/podc-1996.pdf">Michael</a>, <a href="http://www.cs.bgu.ac.il/~mpam092/wiki.files/lock-free-linked-list.pdf">Fomitchev and Ruppert</a>, and <a href="http://research.microsoft.com/pubs/67089/2001-disc.pdf">Harris</a>. We got our idea for looking at energy usage from <a href="http://www.cs.fsu.edu/~xyuan/INTERACT-15/papers/paper06.pdf">Hunt, Sandhu, and Ceze</a>.</p>
+      			<p>Reading these papers showed us just how difficult lock-free linked lists are to implement correctly. Many of them even had errors in their implementation that were pointed out only after the paper had been published. After reading all of them, we decided on implementing the linked-list described in Harris. It was easy enough to understand (though still considerably more complex than its lock-based counterparts), and boasted significant performance improvements.</p>          </div>
           <h2>Methodology</h2>
           <div class="section">
             <p>In comparing the performance of different thread-safe list implementations, it was important to us that using the lists was practical from the perspective of an engineer and not just from an efficiency standpoint. It was important to us that the lists inherit from a common interface that declared what operations could be performed, and that developers (ourselves included) could call the same function on any list implementation and expect the same result. It was also important that the lists support generics, without which our lists have basically no real-world utility.</p>
@@ -93,11 +78,15 @@
 	          <div class="subsection">
 		          <p>We designed tests specifically to test extreme situations and exaggerate the advantages and disadvantages of each list implementation. The final test suite breaks down into three categories:</p>
 		            <h4>Sanity tests</h4>
-		            <p class="subsubsection">The quickest to run and the first to fail in the event of a glaring implementation mistake. Sanity tests were particularly helpful as we gained familiarity with inheritance and polymorphism in C++. By having all the thread-safe list implementations inherit from the same "interface" we could simply maintain a collection of lists and pass them to the same test functions. In addition to cleanliness and adhering to good software engineering practices, this meant that any change to a test was automatically reflected for each of the list implementations with which it was run.</p>p>
-	          </div>
+		            <p class="subsubsection">The quickest to run and the first to fail in the event of a glaring implementation mistake. Sanity tests were particularly helpful as we gained familiarity with inheritance and polymorphism in C++. By having all the thread-safe list implementations inherit from the same "interface" we could simply maintain a collection of lists and pass them to the same test functions. In addition to cleanliness and adhering to good software engineering practices, this meant that any change to a test was automatically reflected for each of the list implementations with which it was run.</p>
+		            <h4>Size tests</h4>
+		            <p class="subsubsection">Helped confirm the list invariants were maintained. Size tests make only insertions, no deletions, so list accesses become slower, and we expected lists with high per-node logic (*ahem* FineGrained) and coarse mutual exclusion to really take a beating in these tests. Size tests push these lists to the limits of their practicality and give us an opportunity to measure what those limits are.</p>
+		            <h4>Jam tests</h4>
+		            <p class="subsubsection">The opposite of size tests, jam tests perform millions of insertions and deletions without the list exceeding a small size. For each insertion performed, the test suite makes a removal immediately afterward. We designed jam tests to measure how well the implementations perform under pressure, when the number of concurrent operations attempted at any given moment may even exceed the number of elements in the list. Jam tests also help verify correctness; they can't tell us where our code might have gone wrong, but they can tell us to focus on the interplay between <code>insert</code> and <code>remove</code>.</p>
+	            </div>
 	          <h3>Environments</h3>
 	          <div class="subsection">
-	            <p>Our primary test machine was a mid-2013 MacBook Air ("MacBookAir6,1") equipped with …. We also ran tests on remote machines, specifically a … workstation and a 32-CPU instance on Pittsburgh Supercomputing Center's Blacklight. We later allude to results from these tests, but over the course of the project we found ourselves less and less reliant on remote machines and more immersed in tests run on the Mac. The big advantage was being able to deploy instantly, not having to wait in a queue to run the compiled code, and not having to share precious CPU resources with the rest of the School of Computer Science. As we progressed, our software became more specialized for OS X, and so running new tests on these remote machines became impossible.</p>
+	            <p>Our primary test machine was a mid-2013 MacBook Air ("<a href="http://www.everymac.com/systems/apple/macbook-air/specs/macbook-air-core-i7-1.7-11-mid-2013-specs.html">MacBookAir6,1</a>") equipped with a dual-core <a href="http://ark.intel.com/products/75114/Intel-Core-i7-4650U-Processor-4M-Cache-up-to-3_30-GHz">i7-4650U</a>. We also ran tests on remote machines, specifically a workstation equipped with a 6-core <a href="http://ark.intel.com/products/47918/Intel-Xeon-Processor-W3670-12M-Cache-3_20-GHz-4_80-GTs-Intel-QPI">Xeon W3670</a> and a 32-CPU instance on Pittsburgh Supercomputing Center's <a href="http://www.psc.edu/index.php/computing-resources/blacklight">Blacklight</a>. We later allude to results from these tests, but over the course of the project we found ourselves less and less reliant on remote machines and more immersed in tests run on the Mac. The big advantage was being able to deploy instantly, not having to wait in a queue to run the compiled code, and not having to share precious CPU resources with the rest of the School of Computer Science. As we progressed, our software became more specialized for OS X, and so running new tests on these remote machines became impossible.</p>
 	          </div>
 	          <h3>Monitoring</h3>
 	          <div class="subsection">
@@ -121,12 +110,33 @@
           <div class="section">
             <p></p>
           </div>
-          <h2>Discussion</h2>
+          <h3>Future Work</h3>
           <div class="section">
-            <h3>Future Work</h3>
+            <h4>Hashtables</h4>
             <div class="subsection">
-              <p></p>
+              <p>We wanted to further improve the usefulness of our key-value lists. To this end, we decided on trying to implement a hashtable (also supporting generic types and hash functions), which is a pivotal computer science data structure that supports much faster operations than linked lists. We spent a good deal of time working on using our lock-free lists to implement lock- free hashtables. In particular, we would use the lock-free lists to chain elements that collided in the table. Buckets in the hashtable were already independent and needed no synchronization.</p>
+              <p>While we wrote an almost-complete hashtable implementation, we were unable to test our code because of compiler and linker errors that neither of us could figure out (or even understand) after a day of debugging. Due to time constraints, we ultimately decided to focus on other things that we could make tangible progress on. However, we still feel that lock-free hashtables have the potential to be extremely useful to multi-threaded applications and will one day be in wide-spread use.</p>
             </div>
+            <h4>Sets</h4>
+            <div class="subsection">
+              <p>Most implementations of sets, which support operations like <code>union</code> and <code>intersect</code>, are implemented using sorted linked lists because of their built in filtering of duplicates and the ability perform many set operations inexpensively. These operations also have the potential to be highly parallelized (if you had infinite execution contexts you could, say, assign each one a value from set A to find in set B, and thus achieve constant span.) This would have been another interesting application to explore, and one that is highly practical.</p>
+            </div>
+          </div>
+          <h2>References</h2>
+          <div class="section">
+            <ul>
+              <li>Kayvon Fatahalian: <a href="http://15418.courses.cs.cmu.edu/spring2014/lecture/lockfree"><em>Fine-Grained Sync and Lock-Free Structures</em></a>. 2014 (Carnegie Mellon University)</li><br>
+              <li>Nicholas Hunt, Paramjit Singh Sandhu, Luis Ceze: <a href="http://www.cs.fsu.edu/~xyuan/INTERACT-15/papers/paper06.pdf"><em>Characterizing the Performance and Energy Efficiency of Lock-Free Data Structures</em></a>. 2012 (University of Washington)</li><br>
+              <li>Scott Michael: <a href="http://www.research.ibm.com/people/m/michael/podc-1996.pdf"><em>Simple, Fast, and Practical Non-Blocking and Blocking Concurrent Queue Algorithms</em></a>. 1996 (University of Rochester)</li><br>
+              <li>Mikhail Fomitchev, Eric Ruppert: <a href="http://www.cs.bgu.ac.il/~mpam092/wiki.files/lock-free-linked-list.pdf"><em>Lock-Free Linked Lists and Skip Lists</em></a>. 2004 (York University)</li><br>
+              <li>Timothy Harris: <a href="http://research.microsoft.com/pubs/67089/2001-disc.pdf"><em>A Pragmatic Implementation of Non-Blocking Linked Lists</em></a>. 2001 (University of Cambridge)</li>
+            </ul>
+            <p>Our proposal is available <a href="proposal.html">here</a>.</p>
+          </div>
+          <h3>Acknowledgements</h3>
+          <div class="section">
+            <p>Equal work was performed by both project members.</p>
+            <p>Huge thanks to Kayvon Fatahalian for guidance and support. Thanks also to Robert Esser and Duane Merrill for feedback and suggestions for future work.</p>
           </div>
         </section>
 

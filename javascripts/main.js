@@ -5,7 +5,7 @@ $(document).ready(function() {
 	for (var i = 0; i < headers.length; i++) {
 		var header = headers[i];
 		var label = header.innerText;
-		var linkLabel = label.replace(/ /g, "-");
+		var linkLabel = label.replace(/ /g, "-").replace(/\'/, "-");
 		header.id = linkLabel;
 		
 		var li = document.createElement("li");
@@ -30,16 +30,23 @@ $(document).ready(function() {
 		if (index > 0) {
 			var anchor = url.substring(index);
 			$('html,body').animate({scrollTop: $(anchor).offset().top},0);
+			if ($('body').scrollTop()+20 < $("#main-content").offset().top) {
+		 		val = $("#main-content").offset().top-70 - ($('body').scrollTop() / 1.333333333);
+		 	} else {
+		 		val = 20;
+		 	}
+	        $("#contentsDiv").animate({'top' : val + "pt"}, 0);
 		}
 	}
 
 	 $(window).scroll(function () {
-	 	var top;
-	 	if ($('html,body').scrollTop()+20 < $("#blurb").offset().top)
-	 		top = $("#blurb").offset().top - $('html,body').scrollTop();
-	 	else
-	 		top = 20;
-        $("#contentsDiv").animate({'top' : top}, 0);
+	 	var val;
+	 	if ($('body').scrollTop()+20 < $("#main-content").offset().top) {
+	 		val = $("#main-content").offset().top-70 - ($('body').scrollTop() / 1.333333333);
+	 	} else {
+	 		val = 20;
+	 	}
+        $("#contentsDiv").animate({'top' : val + "pt"}, 0);
 	 });
 
 });

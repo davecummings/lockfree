@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print" />
+    
+    <script type="text/javascript" src="javascripts/jquery-2.1.1.min.js"></script>
+
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+    <title>Unlocking Potential by Dave Cummings and Stephen Bly</title>
+  </head>
+
+  <body>
+    <header>
+      <div class="inner">
+        <a href="index.html">
+          <h1>Unlocking Potential</h1>
+          <h2>An Eye-Opening Exploration of Non-Blocking Linked Lists</h2>
+        </a>
+        <a href="https://github.com/davidhcummings/lockfree" class="button"><small>View project on</small>GitHub</a>
+      </div>
+    </header>
+
+    <div id="content-wrapper">
+      <div class="inner clearfix">
+        <section id="main-content">
+          <div id="blurb">
+            <p>A project by <a href="http://github.com/davidhcummings">Dave Cummings</a> and <a href="http://github.com/sbly">Stephen Bly</a>, and a finalist in CMU's Spring 2014 Parallelism Competition. Check out the other <a href="http://15418.courses.cs.cmu.edu/spring2014/competition">awesome submissions</a>!</p>
+          </div>
+		<h2>Checkpoint 4/18</h2>
+		<p>In the two weeks since we submitted our proposal, we've made good headway on our project, despite the intrusion of Carnival. We're behind schedule on certain aspects but ahead on others. We've recalibrated our timeline and remaining subgoals to fit in to our three remaining weeks.</p>
+		<h3>Progress</h3>
+		<p>We've read all the literature we planned to, implemented both course- and fine-grained-locking linked lists, and begun our implementation of lock-free linked lists. At the course staff's recommendation, we've reprioritized building out the test suite and fully implementing our lock-free linked list. By focusing first on a well-structured suite of tests, we'll be to use it to drive our development of the lock-free linked list, which will make debugging easier from the get-go and be able to give us instant validation of a correct implementation.</p>
+		<p>In writing and running tests, we've forced ourselves into thinking about all the different edge- and corner-cases we can and should be testing for. Running the preliminary tests has also revealed bugs in our fine-grained-locking implementation. We've explored the wide array of levers and knobs we can adjust in different tests, and we've abstracted these different facets in our test suite so that later on we can test very specific scenarios on all different linked list implementations.</p>
+		<h3>Preliminary Results</h3>
+		<p>Though our lock-free list implementation is not yet to the point where our test suite would be useful for evaluating it, we've drafted some tests using the suite and run them on the two different locking implementations from a 6-core GHC 3000 machine. Shown here are the results from two rudimentary tests, that we're calling <q>length</q> and <q>pressure.</q></p>
+		<ul>
+			<li>
+				<b>Length</b> measures the performance of the list when only insertions of random numbers are performed, so that ultimately the list gets very long.<br><br>
+				<table border=2>
+					<tr>
+						<th>Coarse-grained</th>
+						<th>Fine-grained</th>
+					</tr>
+					<tr>
+						<td>
+							<table border=1>
+								<tr>
+									<th>Insertions</th>
+									<th>Threads</th>
+									<th>Duration (s)</th>
+								</tr>
+								<tr>
+									<td>1000</td>
+									<td>1</td>
+									<td>0.000</td>
+								</tr>
+								<tr>
+									<td>1000</td>
+									<td>2</td>
+									<td>0.001</td>
+								</tr>
+								<tr>
+									<td>1000</td>
+									<td>4</td>
+									<td>0.001</td>
+								</tr>
+								<tr>
+									<td>1000</td>
+									<td>8</td>
+									<td>0.002</td>
+								</tr>
+
+								<tr>
+									<td>10000</td>
+									<td>1</td>
+									<td>0.139</td>
+								</tr>
+								<tr>
+									<td>10000</td>
+									<td>2</td>
+									<td>0.147</td>
+								</tr>
+								<tr>
+									<td>10000</td>
+									<td>4</td>
+									<td>0.165</td>
+								</tr>
+								<tr>
+									<td>10000</td>
+									<td>8</td>
+									<td>0.233</td>
+								</tr>
+
+								<tr>
+									<td>100000</td>
+									<td>1</td>
+									<td>46.277</td>
+								</tr>
+								<tr>
+									<td>100000</td>
+									<td>2</td>
+									<td>46.534</td>
+								</tr>
+								<tr>
+									<td>100000</td>
+									<td>4</td>
+									<td>48.939</td>
+								</tr>
+								<tr>
+									<td>100000</td>
+									<td>8</td>
+									<td>52.004</td>
+								</tr>
+							</table>
+						</td>
+						<td>
+							<table border=1>
+								<tr>
+									<th>Insertions</th>
+									<th>Threads</th>
+									<th>Duration (s)</th>
+								</tr>
+								<tr>
+									<td>1000</td>
+									<td>1</td>
+									<td>0.004</td>
+								</tr>
+								<tr>
+									<td>1000</td>
+									<td>2</td>
+									<td>0.004</td>
+								</tr>
+								<tr>
+									<td>1000</td>
+									<td>4</td>
+									<td>0.003</td>
+								</tr>
+								<tr>
+									<td>1000</td>
+									<td>8</td>
+									<td>0.003</td>
+								</tr>
+
+								<tr>
+									<td>10000</td>
+									<td>1</td>
+									<td>0.429</td>
+								</tr>
+								<tr>
+									<td>10000</td>
+									<td>2</td>
+									<td>0.360</td>
+								</tr>
+								<tr>
+									<td>10000</td>
+									<td>4</td>
+									<td>0.208</td>
+								</tr>
+								<tr>
+									<td>10000</td>
+									<td>8</td>
+									<td>0.148</td>
+								</tr>
+
+								<tr>
+									<td>100000</td>
+									<td>1</td>
+									<td>59.149</td>
+								</tr>
+								<tr>
+									<td>100000</td>
+									<td>2</td>
+									<td>34.139</td>
+								</tr>
+								<tr>
+									<td>100000</td>
+									<td>4</td>
+									<td>19.160</td>
+								</tr>
+								<tr>
+									<td>100000</td>
+									<td>8</td>
+									<td>13.567</td>
+								</tr>
+							</table>
+						</td>
+					</tr>
+				</table>
+				<br><br>
+			</li>
+			<li>
+				<b>Pressure</b> measures the performance of the list when, for each inseration of a random number after the <i>n</i>th to be inserted, a previously inseted number is removed. This ensures that the list never gets longer than <i>n</i>.<br><br>
+				<table border=2>
+					<tr>
+						<th>Coarse-grained</th>
+						<th>Fine-grained</th>
+					</tr>
+					<tr>
+						<td>
+							<table border=1>
+								<tr>
+									<th>Insertions</th>
+									<th>Threads</th>
+									<th>Duration (s)</th>
+								</tr>
+								<tr>
+									<td>100000</td>
+									<td>1</td>
+									<td>0.015</td>
+								</tr>
+								<tr>
+									<td>100000</td>
+									<td>2</td>
+									<td>0.050</td>
+								</tr>
+								<tr>
+									<td>100000</td>
+									<td>4</td>
+									<td>0.157</td>
+								</tr>
+								<tr>
+									<td>100000</td>
+									<td>8</td>
+									<td>0.340</td>
+								</tr>
+							</table>
+						</td>
+						<td>
+							<table border=1>
+								<tr>
+									<th>Insertions</th>
+									<th>Threads</th>
+									<th>Duration (s)</th>
+								</tr>
+								<tr>
+									<td>100000</td>
+									<td>1</td>
+									<td>0.083</td>
+								</tr>
+								<tr>
+									<td>100000</td>
+									<td>2</td>
+									<td>0.175</td>
+								</tr>
+								<tr>
+									<td>100000</td>
+									<td>4</td>
+									<td>0.301</td>
+								</tr>
+								<tr>
+									<td>100000</td>
+									<td>8</td>
+									<td>0.469</td>
+								</tr>
+							</table>
+						</td>
+					</tr>
+				</table>
+			</li>
+		</ul>
+		<h3>New Variables</h3>
+		<p>In addition to moving back the development of the lock-free linked list in favor of building out the test suite, we have not yet deployed to Blacklight and likely won't in the coming week. (We haven't yet procured access, but we're also not yet at the point where we'd be ready to deploy.) While testing on Blacklight is still an important goal for this project, it now clear that rushing to deploy to Blacklight is not crucial. As shown in the above data, even 8 threads running locally on a single Gates machine is enough to amplify the performance characteristics between different linked list implementations.</p>
+		<h3>Adjusted Schedule</h3>
+		<h4>Week 1</h4>
+		<p><i>We read the literature and implemented coarse- and fine-grained-locking linked lists in C</i></p>
+		<h4>Week 2</h4>
+		<p><i>We debugged the fine-grained-locking implementation, and ported both implementations to C++ for the benefit of class hierarchies and ensuring feature parity across all linked list implementations. We began writing tests in C, later porting them to C++ so that the same exact functions could be called on any implementation of linked list. We began planning our broader testing strategy, taking note of the different sorts of tests we can run to achieve the starkest differences in performance. We also prepared this checkpoint document.</i></p>
+		<h4>Week 3.0</h4>
+		<p>Stephen: Implement basic lock-free linked list as presented in the Harris paper.</p>
+		<p>David: Expand testing suite and finalize C-to-Cpp conversion for polymorphic testing.</p>
+		<h4>Week 3.5</h4>
+		<p>Stephen: Debug lock-free list using testing suite.</p>
+		<p>David: Thoroughly test performance of coarse-grained and fine-grained implementations. Improve fine-grained implementation.</p>
+		<h4>Week 4.0</h4>
+		<p>Stephen: Continue debugging lock-free list.</p>
+		<p>David: Run performance tests on lock-free list. Compare workloads and threadcounts. Find bottlenecks.</p>
+		<h4>Week 4.5</h4>
+		<p>Run tests on Blacklight. Explore other platforms and energy usage. Add functionality.</p>
+		<h4>Week 5.0</h4>
+		<p>Tune for Blacklight. Run on other platforms, time permitting; measure energy usage and efficiency.</p>
+		<h4>Week 5.5</h4>
+		<p>Prepare and rehearse presentation, and prepare final report.</p>
+		<h3>Potential Issues</h3>
+		<p>Our lock-free linked list implementation will ultimately be correct, but just how much debugging it will take before it gets to that point is still an unknown variable. Even the fine-grained-locking implementation was no walk in the park, and was initial plagued by unexpected race conditions and deadlocks. For this reason we are hesitant to specify much more than <q>debugging</q> as a main focus during weeks 3.5 and 4.0.</p>
+		<h3>Icing on the Cake</h3>
+		<p>Comparing the performance of these different thread-safe linked list implementations on different platforms still holds a lot of appeal. A GPU would be interesting -- a system so massively parallel that we could crank the thread counts to astronomical numbers -- but would require rewriting a scary amount of code in device-specific code. The other end of the spectrum could also be interesting: how does performance differ on low-power, dual-core CPUs? When every clock cycle counts and there's just enough parallel capability that structures must be thread-safe, which implementation is the most practical?</p>
+		<p>The question of practicality perhaps weighs more heavily on efficiency than on performance, and nowhere is efficiency more important than on mobile devices. Two platforms come to mind as appealing targets: iOS devices and portable Macs. Both iOS (through Xcode) and OS X Maverics have impressive energy profiling features that could give us very precise measures of efficiency. (iOS does not support OpenMP, but managing worker pthreads would not be a bad substitute.) If time permits, we look forward to measuring efficiency on at least one of these platforms.</p>
+		<h3>Plans for the Big Day</h3>
+		<p>While some of our competitors will have exciting demos to show off, it's hard to imagine anything duller than a live emo of a thread-safe data structure. Where we stand to impress is in our data and in the sophistication of our implementation and analysis. We will be presenting data in as attractive a way as possible, with hopefully some eye-catching animations.</p>
+		<h2>Proposal 4/4</h2>
+		<h3>Summary</h3>
+		<p>We are going to create a lock-free sorted linked list and compare its performance to both coarse-grained and fine-grained locking implementations under different workloads and thread counts. Time permitting, we'll explore multiple implementations of lock-free linked lists and evaluate their performance and possibly even energy efficiency on multiple systems.</p>
+		<h3>Background</h3>
+		<p>Lock-free data structures are useful because they are non-blocking, i.e. they can never deadlock. They are also potentially faster than even fine-grained implementations using locks. Lock-free data structures for some simple data structures have been developed, but are extremely difficult to get correct and do not always outperform simpler locking data structures.</p>
+		<p>At the scale that marginal differences in performance of different linked list implementations amount to something significant, performance isn't the only concern. Any system making frequent enough calls to a linked list should also be optimized for energy efficiency. Preliminary analysis by <a href="http://www.cs.fsu.edu/~xyuan/INTERACT-15/papers/paper06.pdf">Nicholas Hunt at UW</a> on the performance of lock-free structures suggests their implications on efficiency may be even bigger than their implications on performance.</p>
+		<h3>The Challenge</h3>
+		<p>Building correct lock-free data structures is extremely challenging.  Even a data structure as simple as a linked list requires papers explaining all the subtleties, while a doubly-linked list has no known correct lock-free implementation. The problem is exacerbated by memory reordering. Even if correct, the implementation still needs to be faster than other implementations (under some range of workloads) or else it is pointless.</p>
+		<h3>Resources</h3>
+		<p>To test the limits of locking and lock-free linked lists at the extremes that will push the limits of each implementation, we'll need a shared-memory cluster that can concurrently execute hundreds of threads. PSC's Blacklight is the obvious choice, since we've worked with it before.</p>
+		<p>Some past work has been done in this area. <a href="http://people.csail.mit.edu/bushl2/rpi/portfolio/lockfree-grape/documents/lock-free-linked-lists.pdf">John Valois at RPI</a> and <a href="http://research.microsoft.com/pubs/67089/2001-disc.pdf">Timothy Harris at Cambridge</a> have both implemented non-blocking linked list algorithms. We intend to build on their work.</p>
+		<h3>Goals/Deliverables</h3>
+		<p>We plan to create a lock-free sorted linked list implementation with insert, delete, and find operations. We will test extensively under different workloads to make sure our implementation is correct, and also provide an analysis of correctness. We hope our code is faster than the fine-grained implementation. With additional time we will try to make our implementation as fast as possible, e.g. by reducing the number of atomic operations.</p>
+		<p>We will present our findings on the relative performance of coarse-grained and fine-grained locking linked lists against that of a non-blocking linked list. If we discover multiple non-blocking linked list algorithms, we will present the findings on their comparative performance. Our test suite will span different workloads and different thread counts to give us a complete picture of the relative benefits to different algorithms.</p>
+		<h3>Platform Choice</h3>
+		<p>Our code will be in C using OpenMP. We are using C because it has pointers, can call atomic primitives such as compare_and_swap, and has access to OpenMP. OpenMP is a good choice because this is a shared memory model and we will be running the code on CPUs. We will also evaluate on Blacklight.</p>
+		<p>Time permitting, we may evaluate performance and energy efficiency on other systems. Systems we're considering are an nVidia GeForce GTX 680 (using C and CUDA) and an Apple A7 (using C and Objective-C.)</p>
+		<h3>Schedule</h3>
+		<p>In week 1, we'll read papers on lock-free linked lists, beginning with those by Valois, Harris, and Hunt, respectively. We'll begin implementing our lock-free linked list and fully implement coarse-grained and finely-grained linked lists.</p>
+		<p>In week 2, we'll complete our initial implementation. We'll begin rudimentary testing on Blacklight to gain familiarity with our tools, perform basic correctness checks on our lock-free implementation, making adjustments as necessary.</p>
+		<p>In week 3, we will focus on our testing suite, performing exhaustive (or as close to exhaustive as we can get) tests to confirm the correctness of our implementation. We anticipate a ton of debugging at this point. If we reach a point where we are confident our implementation is correct and race-proof, we'll begin shifting our focus to building out the performance portion of our test suite.</p>
+		<p>In week 4, we hope to have a correct and vetted implementation of lock-free linked lists and will continue our performance analysis. Depending on our progress, we may experiment with alternative non-blocking linked list algorithms.</p>
+		<p>Week 5 will largely be spillover for any remaining tasks. If we are ahead of schedule, we'll continue our analysis of alternative non-blocking algorithms, and possibly explore the energy efficiency of different thread-safe linked list implementations, and how the performance and efficiency changes on different systems. We'll also use this week to assemble our analysis into a formal report and prepare to present our findings.</p>
+        </section>
+
+        <aside id="sidebar">
+          <div id="contentsDiv">
+            <ul id="contentsUL">
+            </ul>
+          </div>
+
+          <p id="credit">This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the Architect theme by <a href="https://twitter.com/jasonlong">Jason Long</a>.</p>
+        </aside>
+      </div>
+    </div>
+
+    <script type="text/javascript" src="javascripts/main.js"></script>
+  </body>
+</html>
